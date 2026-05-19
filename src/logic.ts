@@ -1,6 +1,10 @@
 import { heroes } from "./dataHeroes";
 import { items } from "./dataItems";
-import { RandomizerConfig, Item, Hero } from "./types";
+import { RandomizerConfig, Item, Hero, ActiveMode } from "./types";
+
+function isRandomMode(mode: ActiveMode): boolean {
+  return (mode as string) === "random";
+}
 
 export function getRandomItems<T>(list: T[], count: number): T[] {
   const shuffled = [...list];
@@ -46,24 +50,65 @@ export function randomize(config: RandomizerConfig): {
   const activeMode = config.items.activeMode;
   let totalActivesNeeded = 0;
 
-  // Determine total actives needed
+  // Determine total actives needed (max 4)
   if (activeMode === "No Actives") {
     totalActivesNeeded = 0;
   } else if (activeMode === "Only Actives") {
-    totalActivesNeeded = Math.min(4, totalItems);
+    totalActivesNeeded = Math.min(totalItems, 4);
+  } else if (isRandomMode(activeMode)) {
+    totalActivesNeeded = Math.floor(Math.random() * 5); // 0-4
   } else if (typeof activeMode === "number") {
-    totalActivesNeeded = Math.min(activeMode, 4);
+    totalActivesNeeded = Math.min(activeMode, 4, totalItems);
   }
 
-  // Select items by category
-  const categories: Array<[string, number]> = [
-    ["Gun", gunCount],
-    ["Vitality", vitalityCount],
-    ["Spirit", spiritCount],
+  // FIRST: Pick active items from pool
+  const activeItems: Item[] = [];
+  const isOnlyActives = activeMode === "Only Actives";
+  
+  // For Only Actives mode, we always want max 4 active items
+  const targetActives = isOnlyActives ? 4 : totalActivesNeeded;
+  
+  if (targetActives > 0) {
+    // Get all available actives from pool
+    let availableActives = pool.filter((item) => item.active);
+    
+    // Exclude upgrades
+    const upgradeNames = new Set<string>();
+    availableActives = availableActives.filter((item) => !upgradeNames.has(item.name));
+
+    // Shuffle and pick randomly - fully random, can get any combination
+    const shuffled = getRandomItems(availableActives, availableActives.length);
+    const picked = shuffled.slice(0, Math.min(targetActives, availableActives.length));
+    activeItems.push(...picked);
+  }
+
+  // For Only Actives mode: return only the actives (exactly 4)
+  if (isOnlyActives) {
+    return { heroes: randomHeroes, items: activeItems };
+  }
+
+  // SECOND: Pick inactive items to fill remaining slots
+  const inactiveCount = totalItems - activeItems.length;
+  const activeNames = new Set(activeItems.map((i) => i.name));
+
+  const categories: Array<[string, number, typeof pool]> = [
+    ["Gun", gunCount, pool],
+    ["Vitality", vitalityCount, pool],
+    ["Spirit", spiritCount, pool],
   ];
 
-  for (const [category, totalCount] of categories) {
-    let categoryPool = pool.filter((item) => item.category === category);
+  for (const [category, totalCount, fullPool] of categories) {
+    if (totalCount === 0) continue;
+
+    // Count how many actives we already have in this category
+    const activesInCategory = activeItems.filter((i) => i.category === category).length;
+    const inactivesNeededInCategory = totalCount - activesInCategory;
+
+    if (inactivesNeededInCategory <= 0) continue;
+
+    let categoryPool = fullPool.filter(
+      (item) => item.category === category && !item.active && !activeNames.has(item.name)
+    );
 
     // Exclude upgrades of already-selected items
     const upgradeNames = new Set<string>();
@@ -71,89 +116,20 @@ export function randomize(config: RandomizerConfig): {
       selected.upgradesTo.forEach((name) => upgradeNames.add(name));
       selected.upgradesFrom.forEach((name) => upgradeNames.add(name));
     }
+    // Also exclude upgrades from active items
+    for (const active of activeItems) {
+      active.upgradesTo.forEach((name) => upgradeNames.add(name));
+      active.upgradesFrom.forEach((name) => upgradeNames.add(name));
+    }
     categoryPool = categoryPool.filter((item) => !upgradeNames.has(item.name));
 
-    // Calculate active count for this category (proportional distribution)
-    const categoryRatio = totalCount / totalItems;
-    let activeCount = Math.round(categoryRatio * totalActivesNeeded);
-
-    // Adjust for rounding - make sure we hit exact total
-    const remainingToSelect = totalCount;
-    const remainingActivesNeeded =
-      totalActivesNeeded - selectedItems.filter((i) => i.active).length;
-
-    // Cap at what's available and needed
-    const maxActivesInCategory = categoryPool.filter((i) => i.active).length;
-    activeCount = Math.min(
-      activeCount,
-      maxActivesInCategory,
-      remainingActivesNeeded,
-    );
-
-    // Ensure we don't exceed remaining items
-    const inactiveCount = Math.max(0, remainingToSelect - activeCount);
-
-    // Select exactly that many
-    const activeItems = getRandomItems(
-      categoryPool.filter((i) => i.active),
-      activeCount,
-    );
-    const inactiveItems = getRandomItems(
-      categoryPool.filter((i) => !i.active),
-      inactiveCount,
-    );
-
-    selectedItems.push(...activeItems, ...inactiveItems);
+    // Pick inactive items for this category
+    const inactiveItems = getRandomItems(categoryPool, inactivesNeededInCategory);
+    selectedItems.push(...inactiveItems);
   }
 
-  // Final adjustment: fix active count after rounding
-  const finalActives = selectedItems.filter((i) => i.active).length;
-  const activeDiff = totalActivesNeeded - finalActives;
-
-  if (activeDiff > 0) {
-    // Too few actives - convert some inactives to actives
-    const inactives = selectedItems.filter((i) => !i.active);
-    const availableActives = pool.filter(
-      (i) => i.active && !selectedItems.map((s) => s.name).includes(i.name),
-    );
-    const toConvert = Math.min(
-      activeDiff,
-      inactives.length,
-      availableActives.length,
-    );
-
-    if (toConvert > 0) {
-      const newActives = getRandomItems(availableActives, toConvert);
-      const remainingInactives = inactives.slice(toConvert);
-      selectedItems = [
-        ...selectedItems.filter((i) => i.active),
-        ...newActives,
-        ...remainingInactives,
-      ];
-    }
-  } else if (activeDiff < 0) {
-    // Too many actives - convert some to inactives
-    const excess = -activeDiff;
-    const activeItems = selectedItems.filter((i) => i.active);
-    const availableInactives = pool.filter(
-      (i) => !i.active && !selectedItems.map((s) => s.name).includes(i.name),
-    );
-    const toConvert = Math.min(
-      excess,
-      activeItems.length,
-      availableInactives.length,
-    );
-
-    if (toConvert > 0) {
-      const newInactives = getRandomItems(availableInactives, toConvert);
-      const remainingActives = activeItems.slice(toConvert);
-      selectedItems = [
-        ...remainingActives,
-        ...selectedItems.filter((i) => !i.active),
-        ...newInactives,
-      ];
-    }
-  }
+  // Combine active and inactive items
+  selectedItems = [...activeItems, ...selectedItems];
 
   return { heroes: randomHeroes, items: selectedItems };
 }
@@ -171,3 +147,9 @@ export function getTierFromValue(value: number): "T1" | "T2" | "T3" | "T4" {
 export function doRandomization(config: RandomizerConfig) {
   return randomize(config);
 }
+
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number" && !isNaN(value);
+}
+
+

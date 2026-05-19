@@ -151,6 +151,7 @@ export const items: Item[] = [
     category: Category.Spirit,
     value: Tier.T1,
     type: ["Economy", "Damage Reduction"],
+    active: true,
   },
 
   {

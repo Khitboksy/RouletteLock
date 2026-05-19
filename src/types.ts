@@ -25,13 +25,13 @@ export const Tier = {
   T4: 6400,
 } as const;
 
-export type CategoryType = (typeof Category)[keyof typeof Category];
-
 export const defaultItem = {
   active: false,
   upgradesTo: [],
   upgradesFrom: [],
 } as const;
+
+export type CategoryType = (typeof Category)[keyof typeof Category];
 
 export type TierSplit = {
   T1?: number;
@@ -40,7 +40,7 @@ export type TierSplit = {
   T4?: number;
 };
 
-export type ActiveMode = "No Actives" | "Only Actives" | number;
+export type ActiveMode = "No Actives" | "Only Actives" | "random" | number;
 
 export interface CategorySplit {
   Gun?: number;
@@ -50,8 +50,8 @@ export interface CategorySplit {
 
 export interface ItemRandomizerConfig {
   totalItems: number;
-  categorySplit?: CategorySplit;  // Optional - if blank, random distribution
-  tierSplit?: TierSplit;           // Optional - if blank, random distribution
+  categorySplit?: CategorySplit; // Optional - if blank, random distribution
+  tierSplit?: TierSplit; // Optional - if blank, random distribution
   activeMode: ActiveMode;
   types?: string[];
 }

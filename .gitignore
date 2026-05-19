@@ -20,3 +20,7 @@ yarn-error.log*
 Thumbs.db
 # Testing
 coverage/
+
+bun.lock
+
+refs.md
