@@ -40,6 +40,13 @@ export type TierSplit = {
   T4?: number;
 };
 
+// Per-category tier splits
+export type CategoryTierSplit = {
+  Gun?: TierSplit;
+  Vitality?: TierSplit;
+  Spirit?: TierSplit;
+};
+
 export type ActiveMode = "No Actives" | "Only Actives" | "random" | number;
 
 export interface CategorySplit {
@@ -51,7 +58,7 @@ export interface CategorySplit {
 export interface ItemRandomizerConfig {
   totalItems: number;
   categorySplit?: CategorySplit; // Optional - if blank, random distribution
-  tierSplit?: TierSplit; // Optional - if blank, random distribution
+  tierSplit?: CategoryTierSplit; // Per-category tier splits
   activeMode: ActiveMode;
   types?: string[];
 }

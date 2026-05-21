@@ -1390,7 +1390,3 @@ export const items: Item[] = [
     active: true,
   },
 ] as const;
-
-export function getItemsByTier(tierValue: number): Item[] {
-  return items.filter((item) => item.value === tierValue);
-}
