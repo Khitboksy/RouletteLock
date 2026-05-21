@@ -133,8 +133,8 @@ nix-env -iA nixpkgs.nodejs_20
 ### 3. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/roulettelock.git
-cd roulettelock
+git clone https://github.com/Khitboksy/RouletteLock.git
+cd RouletteLock
 bun install
 ```
 
