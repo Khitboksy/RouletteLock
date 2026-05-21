@@ -1,5 +1,6 @@
 export interface Hero {
   name: string;
+  roles: string[];
 }
 
 export interface Item {
@@ -66,4 +67,10 @@ export interface ItemRandomizerConfig {
 export interface RandomizerConfig {
   heroCount: number;
   items: ItemRandomizerConfig;
+  // Future: opt-in role/type-based filtering
+  // When set, only heroes with ANY matching role are selected
+  heroRoles?: string[];
+  // When set, only items with ANY matching type tag are selected
+  // (applied IN ADDITION to the item-level type filtering in ItemRandomizerConfig)
+  itemTypes?: string[];
 }

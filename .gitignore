@@ -24,3 +24,15 @@ coverage/
 bun.lock
 
 refs.md
+runs.md
+AGENT.md
+
+# SQLite database (build artifact, recreated by seed script)
+*.db
+*.db-wal
+*.db-shm
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+frontend/tsconfig.tsbuildinfo

@@ -3,7 +3,7 @@ import number from "@inquirer/number";
 import input from "@inquirer/input";
 import chalk from "chalk";
 import { randomize, getRandomItems } from "./logic.js";
-import { items } from "./dataItems.js";
+import { getAllItems } from "./db/adapter.js";
 import { ActiveMode, CategorySplit, TierSplit, CategoryTierSplit } from "./types.js";
 
 // Color palette (Catppuccin Mocha)
@@ -227,7 +227,7 @@ async function main() {
   if (activeMode === "Only Actives") {
     // Pure random: pick 4 random active items from entire pool
     // NO ROUND ROBIN - completely random, could get 4 T4 Spirit items
-    const allActives = items.filter((item) => item.active);
+    const allActives = getAllItems().filter((item) => item.active);
     const pickedActives = getRandomItems(allActives, 4);
     
     // Get random heroes
