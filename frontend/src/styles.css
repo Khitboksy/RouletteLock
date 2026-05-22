@@ -1,3 +1,13 @@
+/* ─── Fonts ───────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "JetBrains Color Emoji";
+  src: url("./assets/JetBrainsColorEmoji.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ─── Catppuccin Mocha Theme ─────────────────────────────────────── */
 
 :root {
@@ -34,6 +44,27 @@ body {
   display: none;               /* Chrome/Safari/Opera */
 }
 
+body, input, textarea, button, select {
+  font-family: "Iosevka", "JetBrains Color Emoji", system-ui, -apple-system, sans-serif;
+}
+
+/* ─── Mount Animations ──────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* ─── App Layout ─────────────────────────────────────────────────── */
 
 .app {
@@ -49,7 +80,6 @@ body {
   text-align: center;
   padding: 24px 0 16px;
   border-bottom: 1px solid var(--surface0);
-  margin-bottom: 24px;
 }
 
 .title {
@@ -184,6 +214,17 @@ body {
   color: var(--overlay0);
   margin-bottom: 12px;
   text-align: center;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
+
+/* ─── Sub-Nav (server mode randomizer page) ─────────────────────── */
+
+.sub-nav {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 12px 0 18px;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────── */
@@ -386,20 +427,25 @@ input[type="number"] {
 /* ─── Tier Sections ──────────────────────────────────────────────── */
 
 .tier-section-wrapper {
-  overflow: hidden;
+  display: grid;
+  grid-template-rows: 1fr;
   transition:
-    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 150px;
   opacity: 1;
   margin-bottom: 10px;
 }
 
 .tier-section-wrapper.collapsed {
-  max-height: 0;
+  grid-template-rows: 0fr;
   opacity: 0;
   margin-bottom: 0;
+}
+
+.tier-section-wrapper > * {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .tier-section {

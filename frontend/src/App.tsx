@@ -70,7 +70,8 @@ const CATEGORY_BORDER: Record<string, string> = {
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Page = "randomizer" | "admin";
+type ServerPage = "randomizer" | "admin";
+type RandomizerTab = "custom" | "all_random";
 
 type ActiveTab = "normal" | "no_actives" | "only_actives";
 type ActiveCount = "random" | 1 | 2 | 3 | 4;
@@ -96,7 +97,8 @@ function clamp(v: number, min: number, max: number): number {
 // ─── Main App ───────────────────────────────────────────────────────
 
 export default function App() {
-  const [page, setPage] = useState<Page>("randomizer");
+  const [randomizerTab, setRandomizerTab] = useState<RandomizerTab>("custom");
+  const [serverPage, setServerPage] = useState<ServerPage>("randomizer");
   const [items, setItems] = useState<Item[]>([]);
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,6 +272,38 @@ export default function App() {
     }
   }, [form]);
 
+  // ── All Random ─────────────────────────────────────────────────
+
+  const handleAllRandomize = useCallback(async () => {
+    try {
+      const heroCount = clamp(
+        3 + Math.floor(Math.random() * (heroes.length - 2)),
+        3,
+        heroes.length,
+      );
+
+      const config: RandomizerConfig = {
+        heroCount,
+        items: {
+          activeMode: "random",
+        },
+      };
+
+      const res = await randomizeLocally(config);
+      setResult(res);
+
+      const hashData = btoa(
+        JSON.stringify({
+          config,
+          result: { heroes: res.heroes, items: res.items.map((i) => i.name) },
+        }),
+      );
+      window.location.hash = `build/${hashData}`;
+    } catch (err) {
+      setError(String(err));
+    }
+  }, [heroes]);
+
   // ── Share URL ───────────────────────────────────────────────────
 
   const copyShareUrl = () => {
@@ -294,56 +328,122 @@ export default function App() {
       <header className="header">
         <h1 className="title">🎲 RouletteLock</h1>
         <p className="subtitle">Deadlock Item Randomizer</p>
-        {isServerMode && (
+        {isServerMode ? (
           <nav className="nav">
             <button
-              className={`nav-btn ${page === "randomizer" ? "active" : ""}`}
-              onClick={() => setPage("randomizer")}
+              className={`nav-btn ${serverPage === "randomizer" ? "active" : ""}`}
+              onClick={() => setServerPage("randomizer")}
             >
               Randomizer
             </button>
             <button
-              className={`nav-btn ${page === "admin" ? "active" : ""}`}
-              onClick={() => setPage("admin")}
+              className={`nav-btn ${serverPage === "admin" ? "active" : ""}`}
+              onClick={() => setServerPage("admin")}
             >
               Admin
+            </button>
+          </nav>
+        ) : (
+          <nav className="nav">
+            <button
+              className={`nav-btn ${randomizerTab === "custom" ? "active" : ""}`}
+              onClick={() => setRandomizerTab("custom")}
+            >
+              Custom
+            </button>
+            <button
+              className={`nav-btn ${randomizerTab === "all_random" ? "active" : ""}`}
+              onClick={() => setRandomizerTab("all_random")}
+            >
+              All Random
             </button>
           </nav>
         )}
       </header>
 
+      {/* Sub-nav: between header border and main content, transitions smoothly */}
+      <Collapse show={isServerMode && serverPage === "randomizer"}>
+        <div className="sub-nav">
+          <button
+            className={`btn-option${randomizerTab === "custom" ? " selected" : ""}`}
+            onClick={() => setRandomizerTab("custom")}
+          >
+            Custom
+          </button>
+          <button
+            className={`btn-option${randomizerTab === "all_random" ? " selected" : ""}`}
+            onClick={() => setRandomizerTab("all_random")}
+          >
+            All Random
+          </button>
+        </div>
+      </Collapse>
+
       <main className="main">
         {error && (
-          <div className="error-banner">
-            <span>Error: {error}</span>
-            <button onClick={() => setError(null)}>×</button>
-          </div>
+          <FadeIn>
+            <div className="error-banner">
+              <span>Error: {error}</span>
+              <button onClick={() => setError(null)}>×</button>
+            </div>
+          </FadeIn>
         )}
 
-        {page === "randomizer" && (
+        {/* Randomizer content: transitions smoothly via Collapse */}
+        <Collapse show={!isServerMode || serverPage === "randomizer"}>
           <>
-            <RandomizerForm
-              form={form}
-              setActiveTab={setActiveTab}
-              setActiveCount={setActiveCount}
-              setHeroCount={setHeroCount}
-              setCategoryCount={setCategoryCount}
-              setTierCount={setTierCount}
-              onRandomize={handleRandomize}
-              itemsCount={items.length}
-              heroesCount={heroes.length}
-            />
+            {randomizerTab === "custom" && (
+              <FadeIn>
+                <RandomizerForm
+                  form={form}
+                  setActiveTab={setActiveTab}
+                  setActiveCount={setActiveCount}
+                  setHeroCount={setHeroCount}
+                  setCategoryCount={setCategoryCount}
+                  setTierCount={setTierCount}
+                  onRandomize={handleRandomize}
+                  itemsCount={items.length}
+                  heroesCount={heroes.length}
+                />
 
-            <Collapse show={!!result}>
-              {result && (
-                <ResultsDisplay result={result} onCopyUrl={copyShareUrl} />
-              )}
-            </Collapse>
+                <Collapse show={!!result}>
+                  {result && (
+                    <ResultsDisplay result={result} onCopyUrl={copyShareUrl} />
+                  )}
+                </Collapse>
+              </FadeIn>
+            )}
+
+            {randomizerTab === "all_random" && (
+              <FadeIn>
+                <div className="card" style={{ textAlign: "center" }}>
+                  <h2>All Random</h2>
+                  <p className="hint">
+                    One-click full random. Picks 3 to {heroes.length} heroes,
+                    random active count, random items.
+                  </p>
+                  <button
+                    className="btn-randomize"
+                    onClick={handleAllRandomize}
+                  >
+                    🎲 Randomize!
+                  </button>
+                </div>
+
+                <Collapse show={!!result}>
+                  {result && (
+                    <ResultsDisplay result={result} onCopyUrl={copyShareUrl} />
+                  )}
+                </Collapse>
+              </FadeIn>
+            )}
           </>
-        )}
+        </Collapse>
 
-        {page === "admin" && isServerMode && (
-          <AdminDashboard
+        {/* Admin content: server mode only, transitions smoothly via Collapse */}
+        {isServerMode && (
+          <Collapse show={serverPage === "admin"}>
+            <AdminDashboard
             items={items}
             heroes={heroes}
             isServerMode={isServerMode}
@@ -370,6 +470,7 @@ export default function App() {
               setHeroes(freshHeroes);
             }}
           />
+          </Collapse>
         )}
       </main>
 
@@ -410,6 +511,13 @@ function Collapse({ show, children }: { show: boolean; children: React.ReactNode
       <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
     </div>
   );
+}
+
+// ─── FadeIn Component (mount animation) ─────────────────────────────
+
+/** Wraps children in a fade-in + translate-up animation on mount. */
+function FadeIn({ children }: { children: React.ReactNode }) {
+  return <div className="fade-in">{children}</div>;
 }
 
 // ─── Randomizer Form Component ──────────────────────────────────────
