@@ -20,12 +20,13 @@ yarn-error.log*
 Thumbs.db
 # Testing
 coverage/
-
 bun.lock
-
 refs.md
 runs.md
 AGENT.md
+
+# Direnv Output
+.direnv
 
 # SQLite database (build artifact, recreated by seed script)
 *.db
