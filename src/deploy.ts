@@ -67,8 +67,23 @@ async function main() {
   console.log("  ✅ Data exported to frontend/public/data/\n");
 
   // ── Step 3: Build frontend ───────────────────────────────────────
-  console.log("  [3/5] Building frontend...");
   const frontendDir = path.join(PROJECT_ROOT, "frontend");
+
+  // Auto-install frontend dependencies if missing
+  const tscPath = path.join(frontendDir, "node_modules", ".bin", "tsc");
+  const tscExists = Bun.spawnSync(["test", "-e", tscPath]).exitCode === 0;
+  if (!tscExists) {
+    console.log("  [3/5] Installing frontend dependencies...");
+    const installResult = Bun.spawnSync(["bun", "install"], { cwd: frontendDir });
+    if (!installResult.success) {
+      console.error("  ❌ Failed to install frontend dependencies:");
+      console.error(installResult.stderr.toString());
+      process.exit(1);
+    }
+    console.log("  ✅ Frontend dependencies installed");
+  }
+
+  console.log("  [3/5] Building frontend...");
   const buildResult = Bun.spawnSync(["bun", "run", "build"], {
     cwd: frontendDir,
   });
