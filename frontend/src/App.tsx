@@ -179,34 +179,43 @@ export default function App() {
             ? "Only Actives"
             : form.activeCount;
 
-      // Build category split from form
+      // Build category split from form.
+      // Blank fields are treated as "random" — they get a random value
+      // assigned instead of being omitted. Explicit "0" stays 0.
       const catCounts = form.categoryCounts;
       const categorySplit: Record<string, number> = {};
       let totalItems = 0;
+      const blankCats: string[] = [];
 
       for (const cat of CATEGORIES) {
         const val = catCounts[cat].trim();
-        if (val !== "") {
+        if (val === "") {
+          blankCats.push(cat);
+        } else {
           const n = clamp(parseInt(val, 10) || 0, 0, 12);
           categorySplit[cat] = n;
           totalItems += n;
         }
       }
 
-      if (Object.keys(categorySplit).length === 0) {
-        // Random split — same logic as All Random: pick total 1-12
-        // uniformly, then randomly assign each item to a category.
-        const totalItems = 1 + Math.floor(Math.random() * 12);
-        let gun = 0, vit = 0, spi = 0;
-        for (let i = 0; i < totalItems; i++) {
-          const r = Math.random();
-          if (r < 1/3) gun++;
-          else if (r < 2/3) vit++;
-          else spi++;
+      // Fill blank categories with random values, capped at 12 total
+      if (blankCats.length > 0) {
+        const remaining = Math.max(0, 12 - totalItems);
+        for (const cat of blankCats) {
+          categorySplit[cat] = 0;
         }
-        categorySplit.Gun = gun;
-        categorySplit.Vitality = vit;
-        categorySplit.Spirit = spi;
+        if (remaining > 0) {
+          // Generate a random total for blanks: 1 to remaining items,
+          // then distribute randomly among blank categories.
+          const blankTotal = 1 + Math.floor(Math.random() * remaining);
+          let rem = blankTotal;
+          for (let i = 0; i < blankCats.length; i++) {
+            const n = i === blankCats.length - 1 ? rem : Math.floor(Math.random() * (rem + 1));
+            categorySplit[blankCats[i]] = n;
+            rem -= n;
+          }
+          totalItems = Math.min(12, totalItems + blankTotal);
+        }
       }
 
       // Parse tier counts (build expected TierSplit structure)

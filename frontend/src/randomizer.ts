@@ -98,6 +98,18 @@ export function getTierFromValue(value: number): "T1" | "T2" | "T3" | "T4" {
   return tierMap[value] || "T1";
 }
 
+// ─── Tier helper ────────────────────────────────────────────────────
+
+function generateRandomTierSplit(totalItems: number): TierSplit {
+  const tiers: Array<"T1" | "T2" | "T3" | "T4"> = ["T1", "T2", "T3", "T4"];
+  const split: TierSplit = { T1: 0, T2: 0, T3: 0, T4: 0 };
+  for (let i = 0; i < totalItems; i++) {
+    const t = tiers[Math.floor(Math.random() * 4)];
+    split[t] = (split[t] ?? 0) + 1;
+  }
+  return split;
+}
+
 // ─── Cap helper ─────────────────────────────────────────────────────
 
 function capSplit(split: CategorySplit): { gun: number; vit: number; spi: number; total: number } {
@@ -208,9 +220,11 @@ export function randomize(
     remActives--;
   }
 
-  // ─── Pick items per category ────────────────────────────────────
+  // ─── Pick items per category (tier-aware) ────────────────────────
   const selectedItems: Item[] = [];
   const allUpgradeNames = new Set<string>();
+
+  const tierValues: Record<string, number> = { T1: 800, T2: 1600, T3: 3200, T4: 6400 };
 
   for (const category of ["Gun", "Vitality", "Spirit"] as const) {
     const count = catSlots[category] || 0;
@@ -219,48 +233,126 @@ export function randomize(
     const activesWanted = Math.min(catActives[category] || 0, count);
     const inactivesWanted = count - activesWanted;
 
-    // Active picks
+    // ── Active picks ───────────────────────────────────────────────
     const activePool = pool.filter((i) => i.category === category && i.active);
     const pickedActives = getRandomItems(activePool, activesWanted);
 
-    // Inactive picks — exclude already-picked actives AND upgrade
-    // relatives so a build doesn't contain both a base item and its upgrade.
+    // Track names and upgrade relatives for actives
     const activeNames = new Set(pickedActives.map((i) => i.name));
     for (const a of pickedActives) {
       a.upgradesTo.forEach((n) => allUpgradeNames.add(n));
       a.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
     }
-    const inactivePool = pool.filter(
-      (i) =>
-        i.category === category &&
-        !i.active &&
-        !activeNames.has(i.name) &&
-        !allUpgradeNames.has(i.name)
-    );
-    let pickedInactives = getRandomItems(inactivePool, inactivesWanted);
 
-    // If we couldn't fill from the filtered pool, grab from the full
-    // category pool (just exclude already-picked names).
-    if (pickedInactives.length < inactivesWanted) {
-      const short = inactivesWanted - pickedInactives.length;
-      const pickedNames = new Set(pickedInactives.map((i) => i.name));
+    // ── Resolve tier distribution ─────────────────────────────────
+    // Check if user specified tiers for this category
+    const userTiers = config.items.tierSplit?.[category as keyof CategoryTierSplit];
+    const hasUserTiers = userTiers !== undefined && (
+      userTiers.T1 !== undefined || userTiers.T2 !== undefined ||
+      userTiers.T3 !== undefined || userTiers.T4 !== undefined
+    );
+
+    // Use a plain record for tier counts (all fields always defined)
+    // to avoid TS issues with TierSplit's optional fields.
+    const getDist = (): Record<string, number> => {
+      if (hasUserTiers) {
+        const d: Record<string, number> = {
+          T1: userTiers!.T1 ?? 0,
+          T2: userTiers!.T2 ?? 0,
+          T3: userTiers!.T3 ?? 0,
+          T4: userTiers!.T4 ?? 0,
+        };
+        const sum = d.T1 + d.T2 + d.T3 + d.T4;
+        if (sum < count) {
+          const fill = generateRandomTierSplit(count - sum);
+          d.T1 += fill.T1 ?? 0;
+          d.T2 += fill.T2 ?? 0;
+          d.T3 += fill.T3 ?? 0;
+          d.T4 += fill.T4 ?? 0;
+        } else if (sum > count) {
+          const scale = count / sum;
+          d.T1 = Math.round(d.T1 * scale);
+          d.T2 = Math.round(d.T2 * scale);
+          d.T3 = Math.round(d.T3 * scale);
+          d.T4 = count - d.T1 - d.T2 - d.T3;
+          const adj = d.T1 + d.T2 + d.T3 + d.T4;
+          if (adj < count) d.T1 += count - adj;
+          else if (adj > count) d.T1 -= adj - count;
+        }
+        return d;
+      }
+      // No user tiers — auto-generate
+      const fill = generateRandomTierSplit(count);
+      return { T1: fill.T1 ?? 0, T2: fill.T2 ?? 0, T3: fill.T3 ?? 0, T4: fill.T4 ?? 0 };
+    };
+
+    const tierDist = getDist();
+
+    // Deduct actives from tier distribution.
+    // Every active must consume exactly one slot from the tier pool so
+    // total items never exceeds the category count. If the active's tier
+    // is at 0, steal a slot from whichever tier still has room.
+    for (const active of pickedActives) {
+      const tier = getTierFromValue(active.value);
+      if ((tierDist[tier] ?? 0) > 0) {
+        tierDist[tier] = (tierDist[tier] ?? 0) - 1;
+      } else {
+        for (const fallback of ["T1", "T2", "T3", "T4"]) {
+          if ((tierDist[fallback] ?? 0) > 0) {
+            tierDist[fallback] = (tierDist[fallback] ?? 0) - 1;
+            break;
+          }
+        }
+      }
+    }
+
+    // ── Per-tier inactive picks ────────────────────────────────────
+    // We never pick more than inactivesWanted across all tiers.
+    const inactivePicks: Item[] = [];
+
+    for (const [tier, slots] of Object.entries(tierDist)) {
+      if (slots <= 0) continue;
+      const remaining = inactivesWanted - inactivePicks.length;
+      if (remaining <= 0) break;
+      const val = tierValues[tier];
+      const tierPool = pool.filter(
+        (i) =>
+          i.category === category &&
+          i.value === val &&
+          !i.active &&
+          !activeNames.has(i.name) &&
+          !allUpgradeNames.has(i.name)
+      );
+      const take = Math.min(slots, tierPool.length, remaining);
+      const picked = getRandomItems(tierPool, take);
+      inactivePicks.push(...picked);
+      for (const i of picked) {
+        i.upgradesTo.forEach((n) => allUpgradeNames.add(n));
+        i.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
+      }
+    }
+
+    // ── Fallback: any remaining slots from full category pool ──────
+    if (inactivePicks.length < inactivesWanted) {
+      const short = inactivesWanted - inactivePicks.length;
+      const pickedNames = new Set(inactivePicks.map((i) => i.name));
       const fallbackPool = pool.filter(
         (i) =>
           i.category === category &&
           !i.active &&
           !activeNames.has(i.name) &&
-          !pickedNames.has(i.name)
+          !pickedNames.has(i.name) &&
+          !allUpgradeNames.has(i.name)
       );
       const extra = getRandomItems(fallbackPool, short);
-      pickedInactives = [...pickedInactives, ...extra];
+      inactivePicks.push(...extra);
+      for (const i of extra) {
+        i.upgradesTo.forEach((n) => allUpgradeNames.add(n));
+        i.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
+      }
     }
 
-    for (const i of pickedInactives) {
-      i.upgradesTo.forEach((n) => allUpgradeNames.add(n));
-      i.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
-    }
-
-    selectedItems.push(...pickedActives, ...pickedInactives);
+    selectedItems.push(...pickedActives, ...inactivePicks);
   }
 
   return { heroes: randomHeroes, items: selectedItems };
