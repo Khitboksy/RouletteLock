@@ -12,6 +12,24 @@ admin tooling for editing items, heroes, and upgrade chains.
 
 ## Setup
 
+Nix flake users - - this repo provides a dev shell with `bun` and `git` pinned
+to the same nixpkgs revision. Just clone, enter the directory, and allow
+direnv:
+
+```nix
+environment.systemPackages = with pkgs; [ direnv ];
+```
+
+```bash
+git clone https://github.com/Khitboksy/RouletteLock.git
+cd RouletteLock
+direnv allow
+```
+
+Everything below (installing git, bun, running `bun install` and
+`bun run seed`) is handled automatically on first entry. You can skip
+straight to Skip straight to [Development](#development).
+
 ### Install Git (if you dont already have it)
 
 Windows (PowerShell)
@@ -28,25 +46,25 @@ brew install git
 
 Linux
 
-— Ubuntu/Debian
+-- Ubuntu/Debian
 
 ```bash
 sudo apt update && sudo apt install git
 ```
 
-Fedora/RHEL
+-- Fedora/RHEL
 
 ```bash
 sudo dnf install git
 ```
 
-Arch
+-- Arch
 
 ```bash
 sudo pacman -S git
 ```
 
-NixOS
+-- NixOS
 
 ```nix
 nix-env -iA nixpkgs.git
@@ -59,6 +77,8 @@ environment.systemPackages = with pkgs; [
   git
 ];
 ```
+
+Or use the dev flake (Nix users with flakes enabled)
 
 ### Install Bun
 
@@ -94,6 +114,8 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
+Or use the dev flake (Nix users with flakes enabled)
+
 ### Clone and Install
 
 ```bash
@@ -114,16 +136,16 @@ bun run admin
 
 Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 
-| Command                  | What it does                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `bun run admin`          | Full dev env — exports data, starts API (port 3000) + Vite HMR (port 5173). Admin tab available. |
-| `bun run frontend:dev`   | Vite HMR only (no backend, no admin tab).                                                        |
-| `bun run dev`            | Original terminal-based CLI randomizer.                                                          |
-| `bun run serve`          | API server only, serves production frontend build.                                               |
-| `bun run seed`           | Populates SQLite database from source data.                                                      |
-| `bun run export-data`    | Exports SQLite → JSON for the static frontend.                                                   |
-| `bun run frontend:build` | Builds frontend for production (`tsc -b && vite build`).                                         |
-| `bun run deploy`         | Full pipeline: seed if blank db → export → build → commit to gh-pages (does NOT push).           |
+| Command                  | What it does                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `bun run admin`          | Full dev env. Exports data, starts API (port 3000) + Vite HMR (port 5173). Admin tab available. |
+| `bun run frontend:dev`   | Vite HMR only (no backend, no admin tab).                                                       |
+| `bun run dev`            | Original terminal-based CLI randomizer.                                                         |
+| `bun run serve`          | API server only, serves production frontend build.                                              |
+| `bun run seed`           | Populates SQLite database from source data.                                                     |
+| `bun run export-data`    | Exports SQLite → JSON for the static frontend.                                                  |
+| `bun run frontend:build` | Builds frontend for production (`tsc -b && vite build`).                                        |
+| `bun run deploy`         | Full pipeline: seed if blank db → export → build → commit to gh-pages (does NOT push).          |
 
 ## Project Structure
 
