@@ -146,6 +146,8 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 | `bun run export-data`    | Exports SQLite → JSON for the static frontend.                                                  |
 | `bun run frontend:build` | Builds frontend for production (`tsc -b && vite build`).                                        |
 | `bun run deploy`         | Full pipeline: seed if blank db → export → build → commit to gh-pages (does NOT push).          |
+| `bun run bigBump`        | Bumps minor version (`0.X.0`) in root + frontend `package.json`. Feature releases.              |
+| `bun run smallBump`      | Bumps patch version (`0.0.X`) in root + frontend `package.json`. Bug fixes and tweaks.          |
 
 ## Project Structure
 
@@ -161,7 +163,9 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 │   ├── main.ts        # CLI randomizer
 │   ├── logic.ts       # randomizer engine
 │   ├── dataItems.ts   # items source. reset with `bun run seed`
-│   └── dataHeroes.ts  # heros source. reset with `bun run seed`
+│   ├── dataHeroes.ts  # heros source. reset with `bun run seed`
+│   ├── bigBump.ts     # bumps minor version (0.X.0) in both package.json files
+│   └── smallBump.ts   # bumps patch version (0.0.X) in both package.json files
 └── package.json
 ```
 

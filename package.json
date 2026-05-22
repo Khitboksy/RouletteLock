@@ -13,7 +13,9 @@
     "frontend:build": "cd frontend && bun run build",
     "admin": "bun run src/admin.ts",
     "frontend:dev": "cd frontend && bun run dev",
-    "export-data": "bun run src/db/export-json.ts"
+    "export-data": "bun run src/db/export-json.ts",
+    "bigBump": "bun run src/bigBump.ts",
+    "smallBump": "bun run src/smallBump.ts"
   },
   "keywords": [],
   "author": "",
