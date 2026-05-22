@@ -28,7 +28,7 @@ direnv allow
 
 Everything below (installing git, bun, running `bun install` and
 `bun run seed`) is handled automatically on first entry. You can skip
-straight to Skip straight to [Development](#development).
+straight to [Development](#development).
 
 ### Install Git (if you dont already have it)
 
