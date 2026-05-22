@@ -25,6 +25,7 @@
   --blue: #89b4fa;
   --lavender: #b4befe;
   --green: #a6e3a1;
+  --yellow: #f9e2af;
   --teal: #94e2d5;
   --radius: 6px;
   --radius-lg: 10px;
@@ -542,6 +543,7 @@ input[type="number"] {
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 600;
+  margin-left: 30px;
 }
 
 .item-types {

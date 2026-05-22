@@ -194,35 +194,19 @@ export default function App() {
       }
 
       if (Object.keys(categorySplit).length === 0) {
-        // Random split
-        const rand = () => Math.floor(Math.random() * 4) + 3;
-        const gun = catCounts.Gun ? parseInt(catCounts.Gun, 10) || rand() : rand();
-        const vit = catCounts.Vitality ? parseInt(catCounts.Vitality, 10) || rand() : rand();
-        const spi = catCounts.Spirit ? parseInt(catCounts.Spirit, 10) || rand() : rand();
-        totalItems = gun + vit + spi;
-
-        // Meet min actives
-        const minItems =
-          typeof activeMode === "number" ? activeMode : 4;
-        if (activeMode !== "No Actives" && totalItems < minItems) {
-          categorySplit.Gun = gun + Math.ceil((minItems - totalItems) / 2);
-          categorySplit.Vitality =
-            vit + Math.floor((minItems - totalItems) / 2);
-          categorySplit.Spirit = spi + ((minItems - totalItems) % 2);
-          totalItems = minItems;
-        } else if (totalItems > 12) {
-          // Cap proportionally
-          const scale = 12 / totalItems;
-          categorySplit.Gun = Math.round(gun * scale);
-          categorySplit.Vitality = Math.round(vit * scale);
-          categorySplit.Spirit =
-            12 - categorySplit.Gun - categorySplit.Vitality;
-          totalItems = 12;
-        } else {
-          categorySplit.Gun = gun;
-          categorySplit.Vitality = vit;
-          categorySplit.Spirit = spi;
+        // Random split — same logic as All Random: pick total 1-12
+        // uniformly, then randomly assign each item to a category.
+        const totalItems = 1 + Math.floor(Math.random() * 12);
+        let gun = 0, vit = 0, spi = 0;
+        for (let i = 0; i < totalItems; i++) {
+          const r = Math.random();
+          if (r < 1/3) gun++;
+          else if (r < 2/3) vit++;
+          else spi++;
         }
+        categorySplit.Gun = gun;
+        categorySplit.Vitality = vit;
+        categorySplit.Spirit = spi;
       }
 
       // Parse tier counts (build expected TierSplit structure)
@@ -282,10 +266,23 @@ export default function App() {
         heroes.length,
       );
 
+      // Pick total items uniformly 1-12, then randomly assign each to a
+      // category. This avoids the per-category independent roll approach
+      // where expected sum ~18 → cap fires ~84% of the time → almost always 12 items.
+      const totalItems = 1 + Math.floor(Math.random() * 12);
+      let gun = 0, vit = 0, spi = 0;
+      for (let i = 0; i < totalItems; i++) {
+        const r = Math.random();
+        if (r < 1/3) gun++;
+        else if (r < 2/3) vit++;
+        else spi++;
+      }
+
       const config: RandomizerConfig = {
         heroCount,
         items: {
           activeMode: "random",
+          categorySplit: { Gun: gun, Vitality: vit, Spirit: spi },
         },
       };
 

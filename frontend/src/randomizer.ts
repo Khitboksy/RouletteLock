@@ -1,11 +1,8 @@
 /**
  * RouletteLock Randomizer — Browser-compatible
  *
- * This is a port of src/randomizer-core.ts for the browser.
- * Zero external dependencies — works with cached data from localStorage.
- *
- * The randomization algorithm is EXACTLY identical to the server-side version.
- * The only difference is this file is bundled by Vite for the browser.
+ * Pure randomizer with no tier/pattern constraints unless explicitly
+ * requested via tierSplit.  Always caps at 12 items / 4 actives.
  */
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -56,9 +53,7 @@ export interface ItemRandomizerConfig {
 export interface RandomizerConfig {
   heroCount: number;
   items: ItemRandomizerConfig;
-  /** Future: opt-in — only select heroes with ANY matching role. Skip/empty for current behavior. */
   heroRoles?: readonly string[];
-  /** Future: opt-in — only select items with ANY matching type tag (in addition to ItemRandomizerConfig.types). Skip/empty for current behavior. */
   itemTypes?: readonly string[];
 }
 
@@ -84,32 +79,6 @@ function hasTierValues(tierSplit: CategoryTierSplit | undefined): boolean {
   return false;
 }
 
-function generateRandomTierSplit(totalItems: number): TierSplit {
-  const tiers: Array<"T1" | "T2" | "T3" | "T4"> = ["T1", "T2", "T3", "T4"];
-  const split: TierSplit = { T1: 0, T2: 0, T3: 0, T4: 0 };
-  for (let i = 0; i < totalItems; i++) {
-    const randomTier = tiers[Math.floor(Math.random() * 4)];
-    split[randomTier] = (split[randomTier] || 0) + 1;
-  }
-  return split;
-}
-
-function fillRandomTierSplit(
-  tierSplit: CategoryTierSplit | undefined,
-  categorySplit: { Gun?: number; Vitality?: number; Spirit?: number }
-): CategoryTierSplit {
-  if (!tierSplit) tierSplit = {};
-  if (hasTierValues(tierSplit)) return tierSplit;
-  const result = { ...tierSplit };
-  for (const cat of ["Gun", "Vitality", "Spirit"] as const) {
-    const count = categorySplit[cat];
-    if (count && count > 0) {
-      result[cat] = generateRandomTierSplit(count);
-    }
-  }
-  return result;
-}
-
 export function getRandomItems<T>(list: T[], count: number): T[] {
   const shuffled = [...list];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -129,21 +98,50 @@ export function getTierFromValue(value: number): "T1" | "T2" | "T3" | "T4" {
   return tierMap[value] || "T1";
 }
 
+// ─── Cap helper ─────────────────────────────────────────────────────
+
+function capSplit(split: CategorySplit): { gun: number; vit: number; spi: number; total: number } {
+  let gun = split.Gun ?? 0;
+  let vit = split.Vitality ?? 0;
+  let spi = split.Spirit ?? 0;
+
+  if (gun < 0) gun = 0;
+  if (vit < 0) vit = 0;
+  if (spi < 0) spi = 0;
+
+  let total = gun + vit + spi;
+
+  if (total > 12) {
+    // Random slot distribution: each of the 12 slots independently picks
+    // a category weighted by the raw counts.  This produces truly varied
+    // results instead of always giving the same proportional split.
+    const w = [gun, vit, spi];
+    const totalW = gun + vit + spi || 1;
+
+    gun = 0; vit = 0; spi = 0;
+    for (let i = 0; i < 12; i++) {
+      const r = Math.random() * totalW;
+      if (r < w[0]) gun++;
+      else if (r < w[0] + w[1]) vit++;
+      else spi++;
+    }
+
+    total = 12;
+  }
+
+  return { gun, vit, spi, total };
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────
 
-/**
- * Pure randomizer — runs entirely in the browser.
- * Pass in items and heroes from localStorage cache, get back a result.
- * No network calls needed after initial data load.
- */
 export function randomize(
   allItems: Item[],
   allHeroes: Hero[],
   config: RandomizerConfig
 ): RandomizerResult {
   const randomHeroes = getRandomItems(allHeroes, config.heroCount);
-  let selectedItems: Item[] = [];
 
+  // ─── Item pool (type filter) ────────────────────────────────────
   let pool = [...allItems];
   if (config.items.types?.length) {
     pool = pool.filter((item) =>
@@ -151,219 +149,119 @@ export function randomize(
     );
   }
 
-  const cs = config.items.categorySplit;
-  const gunCount = cs?.Gun ?? 0;
-  const vitalityCount = cs?.Vitality ?? 0;
-  const spiritCount = cs?.Spirit ?? 0;
-  const totalItems = gunCount + vitalityCount + spiritCount;
+  // ─── Determine category split (capped to 12) ───────────────────
+  const rawSplit = config.items.categorySplit || {};
+  const { gun, vit, spi, total } = capSplit(rawSplit);
 
+  // ─── Category slot map (used by both Only‑Actives and normal path) ─
+  const catSlots: Record<string, number> = { Gun: gun, Vitality: vit, Spirit: spi };
+
+  // ─── Determine active count ─────────────────────────────────────
   const activeMode = config.items.activeMode;
-  let totalActivesNeeded = 0;
+  let targetActives = 0;
   if (activeMode === "No Actives") {
-    totalActivesNeeded = 0;
+    targetActives = 0;
   } else if (activeMode === "Only Actives") {
-    totalActivesNeeded = Math.min(totalItems, 4);
+    targetActives = Math.min(4, total);
   } else if (isRandomMode(activeMode)) {
-    totalActivesNeeded = Math.floor(Math.random() * 5);
+    targetActives = Math.min(Math.floor(Math.random() * 5), total);
   } else if (typeof activeMode === "number") {
-    totalActivesNeeded = Math.min(activeMode, 4, totalItems);
+    targetActives = Math.min(activeMode, 4, total);
   }
 
-  const tierSplit = fillRandomTierSplit(
-    config.items.tierSplit,
-    config.items.categorySplit || {}
-  );
-
-  // ── Active Selection ──────────────────────────────────────────────
-  const activeItems: Item[] = [];
   const isOnlyActives = activeMode === "Only Actives";
-  const targetActives = isOnlyActives ? 4 : totalActivesNeeded;
-
-  if (targetActives > 0) {
-    let availableActives = pool.filter((item) => item.active);
-    const upgradeNames = new Set<string>();
-    availableActives = availableActives.filter(
-      (item) => !upgradeNames.has(item.name)
-    );
-
-    if (tierSplit) {
-      const categoriesToPickFrom: string[] = [];
-      if (gunCount > 0 && tierSplit.Gun) categoriesToPickFrom.push("Gun");
-      if (vitalityCount > 0 && tierSplit.Vitality)
-        categoriesToPickFrom.push("Vitality");
-      if (spiritCount > 0 && tierSplit.Spirit)
-        categoriesToPickFrom.push("Spirit");
-
-      if (categoriesToPickFrom.length > 0) {
-        const filteredByCategory: Item[] = [];
-        for (const cat of categoriesToPickFrom) {
-          const catTierSplit = tierSplit[cat as keyof typeof tierSplit];
-          if (!catTierSplit) continue;
-
-          for (const tier of ["T1", "T2", "T3", "T4"] as const) {
-            const tierCount = catTierSplit[tier];
-            if (tierCount && tierCount > 0) {
-              const tierValue =
-                tier === "T1"
-                  ? 800
-                  : tier === "T2"
-                    ? 1600
-                    : tier === "T3"
-                      ? 3200
-                      : 6400;
-              let tierItems = availableActives.filter(
-                (i) => i.category === cat && i.value === tierValue
-              );
-
-              if (tierItems.length < tierCount) {
-                const tiersAbove = ["T2", "T3", "T4"];
-                const tierIndex = tiersAbove.indexOf(tier);
-                for (let i = tierIndex + 1; i < tiersAbove.length; i++) {
-                  const higherTier = tiersAbove[i];
-                  const higherTierValue =
-                    higherTier === "T2"
-                      ? 1600
-                      : higherTier === "T3"
-                        ? 3200
-                        : 6400;
-                  const higherItems = availableActives.filter(
-                    (x) => x.category === cat && x.value === higherTierValue
-                  );
-                  tierItems = [...tierItems, ...higherItems];
-                  if (tierItems.length >= tierCount) break;
-                }
-              }
-
-              const shuffled = getRandomItems(tierItems, tierItems.length);
-              filteredByCategory.push(
-                ...shuffled.slice(0, Math.min(tierCount, tierItems.length))
-              );
-            }
-          }
-        }
-        if (filteredByCategory.length > 0) {
-          availableActives = filteredByCategory;
-        }
-      }
-    }
-
-    const shuffled = getRandomItems(availableActives, availableActives.length);
-    const picked = shuffled.slice(
-      0,
-      Math.min(targetActives, availableActives.length)
-    );
-    activeItems.push(...picked);
-  }
-
   if (isOnlyActives) {
-    return { heroes: randomHeroes, items: activeItems };
+    // Pick active items per category, capped at 4 total (max actives)
+    const allItems: Item[] = [];
+    let activesRemaining = Math.min(4, total);
+    for (const category of ["Gun", "Vitality", "Spirit"] as const) {
+      if (activesRemaining <= 0) break;
+      const count = Math.min(catSlots[category] || 0, activesRemaining);
+      if (count <= 0) continue;
+      const catPool = pool.filter((i) => i.category === category && i.active);
+      const picked = getRandomItems(catPool, Math.min(count, catPool.length));
+      allItems.push(...picked);
+      activesRemaining -= picked.length;
+    }
+    return { heroes: randomHeroes, items: allItems };
   }
 
-  // ── Inactive Selection ────────────────────────────────────────────
-  const activeNames = new Set(activeItems.map((i) => i.name));
+  // ─── Distribute actives across categories ───────────────────────
+  // Random slot-by-slot assignment so no pattern emerges
+  const catActives: Record<string, number> = { Gun: 0, Vitality: 0, Spirit: 0 };
 
-  const categories: Array<[string, number]> = [
-    ["Gun", gunCount],
-    ["Vitality", vitalityCount],
-    ["Spirit", spiritCount],
-  ];
+  let remActives = targetActives;
+  const catsWithSlots = (["Gun", "Vitality", "Spirit"] as const).filter(c => (catSlots[c] || 0) > 0);
 
-  for (const [category, totalCount] of categories) {
-    if (totalCount === 0) continue;
+  // Shuffle the category list so we don't always start from Gun
+  const shuffledCats = getRandomItems(catsWithSlots, catsWithSlots.length);
 
-    const activesInCategory = activeItems.filter(
-      (i) => i.category === category
-    ).length;
-    const inactivesNeededInCategory = totalCount - activesInCategory;
-    if (inactivesNeededInCategory <= 0) continue;
-
-    const categoryTierSplit =
-      tierSplit?.[category as keyof typeof tierSplit] || {
-        T1: 0,
-        T2: 0,
-        T3: 0,
-        T4: 0,
-      };
-
-    const tiers: Array<[string, number]> = [
-      ["T1", categoryTierSplit.T1 ?? 0],
-      ["T2", categoryTierSplit.T2 ?? 0],
-      ["T3", categoryTierSplit.T3 ?? 0],
-      ["T4", categoryTierSplit.T4 ?? 0],
-    ];
-
-    const activeCountByTier: Record<string, number> = {
-      T1: 0,
-      T2: 0,
-      T3: 0,
-      T4: 0,
-    };
-    for (const active of activeItems.filter((i) => i.category === category)) {
-      const tier = getTierFromValue(active.value);
-      activeCountByTier[tier]++;
+  while (remActives > 0 && shuffledCats.length > 0) {
+    // Pick a random category from the shuffled list
+    const idx = Math.floor(Math.random() * shuffledCats.length);
+    const cat = shuffledCats[idx];
+    if (catActives[cat] >= catSlots[cat]) {
+      shuffledCats.splice(idx, 1); // exhausted
+      continue;
     }
-
-    const inactiveSlotsByTier: Record<string, number> = {};
-    for (const [tier, totalTierSlots] of tiers) {
-      const activeCount = activeCountByTier[tier];
-      inactiveSlotsByTier[tier] = Math.max(0, totalTierSlots - activeCount);
-    }
-
-    const inactiveItems: Item[] = [];
-    const upgradeNames = new Set<string>();
-
-    for (const selected of selectedItems) {
-      selected.upgradesTo.forEach((name) => upgradeNames.add(name));
-      selected.upgradesFrom.forEach((name) => upgradeNames.add(name));
-    }
-    for (const active of activeItems) {
-      active.upgradesTo.forEach((name) => upgradeNames.add(name));
-      active.upgradesFrom.forEach((name) => upgradeNames.add(name));
-    }
-
-    for (const [tier, slots] of Object.entries(inactiveSlotsByTier)) {
-      if (slots <= 0) continue;
-
-      const tierValue =
-        tier === "T1"
-          ? 800
-          : tier === "T2"
-            ? 1600
-            : tier === "T3"
-              ? 3200
-              : 6400;
-
-      const tierPool = pool.filter(
-        (item) =>
-          item.category === category &&
-          item.value === tierValue &&
-          !item.active &&
-          !activeNames.has(item.name) &&
-          !upgradeNames.has(item.name)
-      );
-
-      const picked = getRandomItems(tierPool, Math.min(slots, tierPool.length));
-      inactiveItems.push(...picked);
-    }
-
-    if (inactiveItems.length < inactivesNeededInCategory) {
-      const remaining = inactivesNeededInCategory - inactiveItems.length;
-      const pickedNames = new Set(inactiveItems.map((i) => i.name));
-      const remainingPool = pool.filter(
-        (item) =>
-          item.category === category &&
-          !item.active &&
-          !activeNames.has(item.name) &&
-          !pickedNames.has(item.name) &&
-          !upgradeNames.has(item.name)
-      );
-      const extra = getRandomItems(remainingPool, remaining);
-      inactiveItems.push(...extra);
-    }
-
-    selectedItems.push(...inactiveItems);
+    catActives[cat]++;
+    remActives--;
   }
 
-  selectedItems = [...activeItems, ...selectedItems];
+  // ─── Pick items per category ────────────────────────────────────
+  const selectedItems: Item[] = [];
+  const allUpgradeNames = new Set<string>();
+
+  for (const category of ["Gun", "Vitality", "Spirit"] as const) {
+    const count = catSlots[category] || 0;
+    if (count <= 0) continue;
+
+    const activesWanted = Math.min(catActives[category] || 0, count);
+    const inactivesWanted = count - activesWanted;
+
+    // Active picks
+    const activePool = pool.filter((i) => i.category === category && i.active);
+    const pickedActives = getRandomItems(activePool, activesWanted);
+
+    // Inactive picks — exclude already-picked actives AND upgrade
+    // relatives so a build doesn't contain both a base item and its upgrade.
+    const activeNames = new Set(pickedActives.map((i) => i.name));
+    for (const a of pickedActives) {
+      a.upgradesTo.forEach((n) => allUpgradeNames.add(n));
+      a.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
+    }
+    const inactivePool = pool.filter(
+      (i) =>
+        i.category === category &&
+        !i.active &&
+        !activeNames.has(i.name) &&
+        !allUpgradeNames.has(i.name)
+    );
+    let pickedInactives = getRandomItems(inactivePool, inactivesWanted);
+
+    // If we couldn't fill from the filtered pool, grab from the full
+    // category pool (just exclude already-picked names).
+    if (pickedInactives.length < inactivesWanted) {
+      const short = inactivesWanted - pickedInactives.length;
+      const pickedNames = new Set(pickedInactives.map((i) => i.name));
+      const fallbackPool = pool.filter(
+        (i) =>
+          i.category === category &&
+          !i.active &&
+          !activeNames.has(i.name) &&
+          !pickedNames.has(i.name)
+      );
+      const extra = getRandomItems(fallbackPool, short);
+      pickedInactives = [...pickedInactives, ...extra];
+    }
+
+    for (const i of pickedInactives) {
+      i.upgradesTo.forEach((n) => allUpgradeNames.add(n));
+      i.upgradesFrom.forEach((n) => allUpgradeNames.add(n));
+    }
+
+    selectedItems.push(...pickedActives, ...pickedInactives);
+  }
+
   return { heroes: randomHeroes, items: selectedItems };
 }
