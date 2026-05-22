@@ -306,12 +306,14 @@ export default function App() {
           >
             Randomizer
           </button>
-          <button
-            className={`nav-btn ${page === "admin" ? "active" : ""}`}
-            onClick={() => setPage("admin")}
-          >
-            Admin
-          </button>
+          {isServerMode && (
+            <button
+              className={`nav-btn ${page === "admin" ? "active" : ""}`}
+              onClick={() => setPage("admin")}
+            >
+              Admin
+            </button>
+          )}
         </nav>
       </header>
 
@@ -342,7 +344,7 @@ export default function App() {
           </>
         )}
 
-        {page === "admin" && (
+        {page === "admin" && isServerMode && (
           <AdminDashboard
             items={items}
             heroes={heroes}
