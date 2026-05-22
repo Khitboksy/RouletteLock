@@ -16,47 +16,22 @@
   --lavender: #b4befe;
   --green: #a6e3a1;
   --teal: #94e2d5;
-  --yellow: #f9e2af;
-  --peach: #fab387;
-  --maroon: #eba0ac;
-  --red: #f38ba8;
-  --mauve: #cba6f7;
-  --pink: #f5c2e7;
-  --flamingo: #f2cdcd;
-  --rosewater: #f5e0dc;
-
-  --radius: 8px;
-  --radius-lg: 12px;
-  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --radius: 6px;
+  --radius-lg: 10px;
 }
 
-/* ─── Reset & Base ───────────────────────────────────────────────── */
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ─── Scrollbar Hidden (scroll still works) ──────────────────────── */
 
 html {
-  font-size: 16px;
-  scroll-behavior: smooth;
+  scrollbar-width: none;       /* Firefox */
 }
 
 body {
-  font-family: var(--font);
-  background: var(--base);
-  color: var(--text);
-  line-height: 1.6;
-  min-height: 100vh;
+  -ms-overflow-style: none;    /* IE/Edge */
 }
 
-a {
-  color: var(--blue);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
+::-webkit-scrollbar {
+  display: none;               /* Chrome/Safari/Opera */
 }
 
 /* ─── App Layout ─────────────────────────────────────────────────── */
@@ -404,11 +379,27 @@ input[type="number"] {
 
 /* ─── Tier Sections ──────────────────────────────────────────────── */
 
+.tier-section-wrapper {
+  overflow: hidden;
+  transition:
+    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 150px;
+  opacity: 1;
+  margin-bottom: 10px;
+}
+
+.tier-section-wrapper.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
 .tier-section {
   border: 1px solid var(--surface0);
   border-radius: var(--radius);
   padding: 12px;
-  margin-bottom: 10px;
 }
 
 .tier-grid {

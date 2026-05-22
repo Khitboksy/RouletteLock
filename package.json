@@ -11,9 +11,9 @@
     "deploy": "bun run src/deploy.ts",
     "frontend:install": "cd frontend && bun install",
     "frontend:build": "cd frontend && bun run build",
+    "admin": "bun run src/admin.ts",
     "frontend:dev": "cd frontend && bun run dev",
-    "export-data": "bun run src/db/export-json.ts",
-    "build-site": "bun run export-data && cd frontend && PATH=\"./node_modules/.bin:$PATH\" bun run build"
+    "export-data": "bun run src/db/export-json.ts"
   },
   "keywords": [],
   "author": "",

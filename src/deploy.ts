@@ -133,10 +133,13 @@ async function main() {
     run("git", ["rm", "-rf", "."], { exitOnError: false, label: "remove old tracked files" });
 
     // ── Step 8: Remove untracked artifacts that leaked from main ──
-    // git rm only removes tracked files — src/, frontend/, node_modules/,
-    // and bun.lock persist across branch switches because they contain
-    // or are gitignored content. None belong on gh-pages.
-    const junkDirs = ["src", "frontend", "node_modules", "bun.lock"];
+    // git rm only removes tracked files. Anything gitignored
+    // (src/db/*.db, node_modules/, bun.lock, frontend/ internal dirs)
+    // persists across branch switches. We do NOT rm -rf them because
+    // they would be permanently destroyed — git can't restore what it
+    // never tracked. The untracked files on gh-pages won't be committed
+    // since Step 10 only stages specific files.
+    const junkDirs: string[] = [];
     for (const entry of junkDirs) {
       const entryPath = path.join(PROJECT_ROOT, entry);
       const exists = Bun.spawnSync(["test", "-e", entryPath]).exitCode === 0;

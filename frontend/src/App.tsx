@@ -334,9 +334,11 @@ export default function App() {
               heroesCount={heroes.length}
             />
 
-            {result && (
-              <ResultsDisplay result={result} onCopyUrl={copyShareUrl} />
-            )}
+            <Collapse show={!!result}>
+              {result && (
+                <ResultsDisplay result={result} onCopyUrl={copyShareUrl} />
+              )}
+            </Collapse>
           </>
         )}
 
@@ -382,6 +384,30 @@ export default function App() {
         <span>·</span>
         <span>Powered by SQLite + React</span>
       </footer>
+    </div>
+  );
+}
+
+// ─── Collapse Component (grid-template-rows animation) ──────────────
+
+/**
+ * Collapses/expands children with a smooth height + opacity animation.
+ * Uses CSS Grid's `grid-template-rows` transition so the browser
+ * interpolates between the actual content height (1fr) and 0 (0fr)
+ * — no arbitrary max-height or manual measurement needed.
+ */
+function Collapse({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: show ? "1fr" : "0fr",
+        opacity: show ? 1 : 0,
+        transition:
+          "grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+    >
+      <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
     </div>
   );
 }
@@ -438,7 +464,7 @@ function RandomizerForm({
             </button>
           ))}
         </div>
-        {form.activeTab === "normal" && (
+        <Collapse show={form.activeTab === "normal"}>
           <div className="button-group sub-group">
             {subOptions.map((opt) => (
               <button
@@ -450,7 +476,7 @@ function RandomizerForm({
               </button>
             ))}
           </div>
-        )}
+        </Collapse>
       </div>
 
       <div className="card">
@@ -475,70 +501,75 @@ function RandomizerForm({
         </div>
       </div>
 
-      {form.activeTab !== "only_actives" && (
-        <>
-          <div className="card">
-            <h2>Category Distribution</h2>
-            <p className="hint">
-              Leave blank for random, enter 0–10 for specific count
-            </p>
-            <div className="category-grid">
-              {CATEGORIES.map((cat) => (
-                <div
-                  key={cat}
-                  className="category-input"
-                  style={{ borderColor: CATEGORY_BORDER[cat] }}
-                >
-                  <label style={{ color: CATEGORY_COLORS[cat] }}>{cat}</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={12}
-                    placeholder="4"
-                    value={form.categoryCounts[cat]}
-                    onChange={(e) => setCategoryCount(cat, e.target.value)}
-                    className="num-input"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <h2>Tier Distribution</h2>
-            <p className="hint">
-              Per category, per tier. Leave blank for random, 0 for none.
-            </p>
+      <Collapse show={form.activeTab !== "only_actives"}>
+        <div className="card">
+          <h2>Category Distribution</h2>
+          <p className="hint">
+            Leave blank for random, enter 0–10 for specific count
+          </p>
+          <div className="category-grid">
             {CATEGORIES.map((cat) => (
               <div
                 key={cat}
-                className="tier-section"
+                className="category-input"
                 style={{ borderColor: CATEGORY_BORDER[cat] }}
               >
-                <h3 style={{ color: CATEGORY_COLORS[cat] }}>{cat}</h3>
-                <div className="tier-grid">
-                  {TIERS.map((tier) => (
-                    <div key={tier} className="tier-input">
-                      <label>{tier}</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={12}
-                        placeholder="1"
-                        value={form.tierCounts[cat][tier]}
-                        onChange={(e) =>
-                          setTierCount(cat, tier, e.target.value)
-                        }
-                        className="num-input small"
-                      />
-                    </div>
-                  ))}
-                </div>
+                <label style={{ color: CATEGORY_COLORS[cat] }}>{cat}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={12}
+                  placeholder="4"
+                  value={form.categoryCounts[cat]}
+                  onChange={(e) => setCategoryCount(cat, e.target.value)}
+                  className="num-input"
+                />
               </div>
             ))}
           </div>
-        </>
-      )}
+        </div>
+
+        <div className="card">
+          <h2>Tier Distribution</h2>
+          <p className="hint">
+            Per category, per tier. Leave blank for random, 0 for none.
+          </p>
+          {CATEGORIES.map((cat) => {
+            const isCollapsed = form.categoryCounts[cat] === "0";
+            return (
+              <div
+                key={cat}
+                className={`tier-section-wrapper ${isCollapsed ? "collapsed" : ""}`}
+              >
+                <div
+                  className="tier-section"
+                  style={{ borderColor: CATEGORY_BORDER[cat] }}
+                >
+                  <h3 style={{ color: CATEGORY_COLORS[cat] }}>{cat}</h3>
+                  <div className="tier-grid">
+                    {TIERS.map((tier) => (
+                      <div key={tier} className="tier-input">
+                        <label>{tier}</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={12}
+                          placeholder="1"
+                          value={form.tierCounts[cat][tier]}
+                          onChange={(e) =>
+                            setTierCount(cat, tier, e.target.value)
+                          }
+                          className="num-input small"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Collapse>
 
       <button className="btn-randomize" onClick={onRandomize}>
         🎲 Randomize!
