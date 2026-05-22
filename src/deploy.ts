@@ -14,12 +14,13 @@
  *   4. Temp-backup dist/ → /tmp/roulettelock-dist-backup-*
  *   5. Checkout gh-pages (create with --orphan if first time)
  *   6. git rm -rf .  (clear old gh-pages contents)
- *   7. Copy dist/ from backup back
- *   8. Stage only: index.html  assets/  data/
- *   9. git commit -m "deploy: static site build"
- *  10. Return to original branch
- *  11. Pop stash (restores node_modules and work-in-progress)
- *  12. Clean up temp backup
+ *   7. Remove untracked artifacts that leaked from main (src, frontend, etc.)
+ *   8. Copy dist/ from backup back
+ *   9. Stage only: index.html  assets/  data/
+ *  10. git commit -m "deploy: static site build"
+ *  11. Return to original branch
+ *  12. Pop stash (restores node_modules and work-in-progress)
+ *  13. Clean up temp backup
  */
 
 import { exportToJson } from "./db/adapter";
@@ -110,7 +111,20 @@ async function main() {
     // ── Step 6: Remove old tracked files ──────────────────────────
     run("git", ["rm", "-rf", "."], { exitOnError: false, label: "remove old tracked files" });
 
-    // ── Step 7: Copy dist/ contents back to working tree ──────────
+    // ── Step 7: Remove untracked artifacts that leaked from main ──
+    // git rm only removes tracked files — src/, frontend/, node_modules/,
+    // and bun.lock persist across branch switches because they contain
+    // or are gitignored content. None belong on gh-pages.
+    const junkDirs = ["src", "frontend", "node_modules", "bun.lock"];
+    for (const entry of junkDirs) {
+      const entryPath = path.join(PROJECT_ROOT, entry);
+      const exists = Bun.spawnSync(["test", "-e", entryPath]).exitCode === 0;
+      if (exists) {
+        run("rm", ["-rf", entryPath], { label: `remove ${entry} from gh-pages`, exitOnError: false });
+      }
+    }
+
+    // ── Step 8: Copy dist/ contents back to working tree ──────────
     const backupFiles = [...Bun.spawnSync(["ls", tmpBackup]).stdout.toString().trim().split("\n").filter(Boolean)];
     console.log(`  ℹ️  Restoring from backup: ${backupFiles.join(", ")}`);
     const copyOk = run("cp", ["-r", `${tmpBackup}/.`, PROJECT_ROOT], {
@@ -123,7 +137,7 @@ async function main() {
       return; // will hit finally block for cleanup
     }
 
-    // ── Step 8: Stage only the static site files ──────────────────
+    // ── Step 9: Stage only the static site files ──────────────────
     const staticFiles = ["index.html", "assets", "data"];
     let stagedCount = 0;
     for (const entry of staticFiles) {
@@ -142,7 +156,7 @@ async function main() {
       }
     }
 
-    // ── Step 9: Commit ───────────────────────────────────────────
+    // ── Step 10: Commit ──────────────────────────────────────────
     if (stagedCount === 0) {
       console.log("  ⚠️  Nothing to stage — skipping commit");
     } else {
@@ -173,19 +187,19 @@ async function main() {
     //  CLEANUP — always runs, even if an error occurred above
     // ══════════════════════════════════════════════════════════════
 
-    // ── Step 10: Return to original branch ──────────────────────
+    // ── Step 11: Return to original branch ──────────────────────
     run("git", ["checkout", currentBranch], {
       label: `return to ${currentBranch}`,
       exitOnError: false,
     });
 
-    // ── Step 11: Pop stash ─────────────────────────────────────
+    // ── Step 12: Pop stash ─────────────────────────────────────
     const stashList = run("git", ["stash", "list"], { exitOnError: false });
     if (stashList.stdout.includes(STASH_MSG)) {
       run("git", ["stash", "pop"], { exitOnError: false, label: "pop stash" });
     }
 
-    // ── Step 12: Clean up temp dir ─────────────────────────────
+    // ── Step 13: Clean up temp dir ─────────────────────────────
     run("rm", ["-rf", tmpBackup], { exitOnError: false });
 
     console.log(`  ✅ Returned to ${currentBranch}\n`);
