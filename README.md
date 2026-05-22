@@ -131,16 +131,16 @@ bun run seed
 ## Development
 
 ```bash
-bun run admin
+bun run dev
 ```
 
 Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 
 | Command                  | What it does                                                                                    |
 | ------------------------ | ----------------------------------------------------------------------------------------------- |
-| `bun run admin`          | Full dev env. Exports data, starts API (port 3000) + Vite HMR (port 5173). Admin tab available. |
+| `bun run dev`            | Full dev env. Exports data, starts API (port 3000) + Vite HMR (port 5173). Admin tab available. |
+| `bun run admin`          | Alias for `bun run dev`.                                                                        |
 | `bun run frontend:dev`   | Vite HMR only (no backend, no admin tab).                                                       |
-| `bun run dev`            | Original terminal-based CLI randomizer.                                                         |
 | `bun run serve`          | API server only, serves production frontend build.                                              |
 | `bun run seed`           | Populates SQLite database from source data.                                                     |
 | `bun run export-data`    | Exports SQLite → JSON for the static frontend.                                                  |
@@ -158,15 +158,14 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 ├── src/
 │   ├── db/            # SQLite adapter, seed, schema, export
 │   ├── deploy.ts      # gh-pages deploy pipeline
+│   ├── main.ts        # main entry point (dev environment orchestrator)
 │   ├── logic.ts       # randomizer engine
 │   ├── randomizer-core.ts  # pure randomizer algorithm
 │   ├── types.ts       # shared type definitions
 │   ├── data/items.ts   # items source. reset with `bun run seed`
 │   └── data/heroes.ts  # heroes source. reset with `bun run seed`
 ├── dev/
-│   ├── admin.ts       # dev orchestrator (spawns API + Vite)
 │   ├── server.ts      # API server (Bun.serve)
-│   ├── main.ts        # CLI randomizer
 │   ├── bigBump.ts     # bumps minor version (0.X.0)
 │   └── smallBump.ts   # bumps patch version (0.0.X)
 └── package.json
@@ -177,10 +176,10 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 Source data → `bun run seed` → SQLite → `bun run export-data` →
 `frontend/public/data/*.json` → React frontend loads on startup.
 
-In dev mode (`bun run admin`), the frontend also talks to the API at `/api/*`
+In dev mode (`bun run dev`), the frontend also talks to the API at `/api/*`
 for admin CRUD and git operations. Admin changes are preserved on deploy if and
 only if the database doesnt get deleted. If you lose the database, you reseed
 whatever is *inside* the TypeScript arrays in `src/data/heroes.ts` and `src/data/items.ts`
 
 Randomization runs entirely in the browser (`frontend/src/randomizer.ts`).
-The server-side engine (`src/logic.ts`) is only used by the CLI.
+The server-side engine (`src/logic.ts`) is used by the API server for on-demand randomization.

@@ -1,5 +1,5 @@
 /**
- * RouletteLock Admin Server
+ * RouletteLock — Main Entry Point
  *
  * One-command development environment that:
  * 1. Exports fresh data from SQLite to JSON (for the static frontend)
@@ -9,10 +9,10 @@
  * Vite proxies /api/* requests to the API server, so the frontend
  * works with live data while enjoying instant hot-reload on code changes.
  *
- * Run with: bun run admin
+ * Run with: bun run dev
  */
 
-import { exportToJson } from "../src/db/adapter";
+import { exportToJson } from "./db/adapter";
 import path from "path";
 import { fileURLToPath } from "url";
 
