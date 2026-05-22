@@ -84,7 +84,7 @@ export async function getItems(): Promise<Item[]> {
 
   // Fetch from static JSON file
   try {
-    const res = await fetch("/data/items.json");
+    const res = await fetch("data/items.json");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = (await res.json()) as Item[];
     setCache(CACHE_KEY_ITEMS, items);
@@ -110,7 +110,7 @@ export async function getHeroes(): Promise<Hero[]> {
   }
 
   try {
-    const res = await fetch("/data/heroes.json");
+    const res = await fetch("data/heroes.json");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const heroes = (await res.json()) as Hero[];
     setCache(CACHE_KEY_HEROES, heroes);
