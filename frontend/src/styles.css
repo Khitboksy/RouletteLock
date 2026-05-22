@@ -169,18 +169,21 @@ body {
   font-weight: 600;
   margin-bottom: 12px;
   color: var(--subtext1);
+  text-align: center;
 }
 
 .card h3 {
   font-size: 0.95rem;
   font-weight: 500;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .hint {
   font-size: 0.8rem;
   color: var(--overlay0);
   margin-bottom: 12px;
+  text-align: center;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────── */
@@ -208,6 +211,7 @@ body {
 .button-group.sub-group {
   margin-top: 8px;
   gap: 4px;
+  justify-content: center;
 }
 .btn-small-option {
   background: var(--mantle);
@@ -297,6 +301,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  justify-content: center;
 }
 
 /* ─── Hero Input ─────────────────────────────────────────────────── */
@@ -304,6 +309,7 @@ body {
 .hero-input {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
