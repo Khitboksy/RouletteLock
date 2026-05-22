@@ -22,13 +22,13 @@ const FRONTEND_DIR = path.join(PROJECT_ROOT, "frontend");
 
 // ─── Step 1: Export fresh data ─────────────────────────────────────
 
-console.log("\n  🗂️  Exporting fresh data from SQLite...");
+console.log("\n  🗂️ Exporting fresh data from SQLite...");
 exportToJson();
 console.log("  ✅ Data exported\n");
 
 // ─── Step 2: Start API server ──────────────────────────────────────
 
-console.log("  🚀 Starting API server on http://localhost:3000");
+console.log("  Starting API server on http://localhost:3000");
 
 const apiProc = Bun.spawn(["bun", "run", "dev/server.ts"], {
   cwd: PROJECT_ROOT,
@@ -41,10 +41,8 @@ await new Promise((r) => setTimeout(r, 500));
 
 // ─── Step 3: Start Vite dev server ─────────────────────────────────
 
-console.log("  🌀 Starting Vite dev server on http://localhost:5173");
-console.log("  🌐 Open http://localhost:5173 to view the app\n");
-console.log("  ℹ️  Vite proxies /api/* → localhost:3000");
-console.log("  ℹ️  Press Ctrl+C to stop both servers\n");
+console.log("  ℹ️ Vite proxies /api/* → localhost:3000");
+console.log("  ℹ️ Press Ctrl+C to stop both servers\n");
 
 const viteProc = Bun.spawn(["bun", "run", "dev"], {
   cwd: FRONTEND_DIR,

@@ -48,13 +48,17 @@ function run(
     console.error(result.stderr.toString());
     process.exit(1);
   }
-  return { success: ok, stdout: result.stdout.toString().trim(), stderr: result.stderr.toString().trim() };
+  return {
+    success: ok,
+    stdout: result.stdout.toString().trim(),
+    stderr: result.stderr.toString().trim(),
+  };
 }
 
 // ─── Main ───────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("\n  🚀 RouletteLock Deploy\n");
+  console.log("\nRouletteLock Deploy\n");
 
   // ── Step 1: Ensure database is seeded ───────────────────────────
   console.log("  [1/5] Ensuring database is ready...");
@@ -74,7 +78,9 @@ async function main() {
   const tscExists = Bun.spawnSync(["test", "-e", tscPath]).exitCode === 0;
   if (!tscExists) {
     console.log("  [3/5] Installing frontend dependencies...");
-    const installResult = Bun.spawnSync(["bun", "install"], { cwd: frontendDir });
+    const installResult = Bun.spawnSync(["bun", "install"], {
+      cwd: frontendDir,
+    });
     if (!installResult.success) {
       console.error("  ❌ Failed to install frontend dependencies:");
       console.error(installResult.stderr.toString());
@@ -88,14 +94,16 @@ async function main() {
     cwd: frontendDir,
   });
   if (!buildResult.success) {
-    console.error("  ❌ Frontend build failed:");
+    console.error("  ❌ Failed to build frontend:");
     console.error(buildResult.stderr.toString());
     process.exit(1);
   }
   console.log("  ✅ Frontend built\n");
 
   // ── Step 4: Note current branch & stash ─────────────────────────
-  const branchResult = run("git", ["branch", "--show-current"], { label: "get current branch" });
+  const branchResult = run("git", ["branch", "--show-current"], {
+    label: "get current branch",
+  });
   const currentBranch = branchResult.stdout;
   console.log(`  [4/5] Current branch: ${currentBranch}`);
 
@@ -109,11 +117,13 @@ async function main() {
     exitOnError: false, // ok if nothing to stash
   });
 
-    // ── Step 5: Backup dist/ ─────────────────────────────────────────
+  // ── Step 5: Backup dist/ ─────────────────────────────────────────
   const timestamp = Date.now().toString(36);
   const tmpBackup = `/tmp/roulettelock-dist-backup-${timestamp}`;
   run("mkdir", ["-p", tmpBackup], { label: "create temp backup dir" });
-  run("cp", ["-r", `${distDir}/.`, tmpBackup], { label: "backup dist/ to /tmp/" });
+  run("cp", ["-r", `${distDir}/.`, tmpBackup], {
+    label: "backup dist/ to /tmp/",
+  });
 
   // Track whether we changed anything, so cleanup always runs
   let didCommit = false;
@@ -126,11 +136,16 @@ async function main() {
     if (hasGhPages) {
       run("git", ["checkout", "gh-pages"], { label: "checkout gh-pages" });
     } else {
-      run("git", ["checkout", "--orphan", "gh-pages"], { label: "create orphan gh-pages" });
+      run("git", ["checkout", "--orphan", "gh-pages"], {
+        label: "create orphan gh-pages",
+      });
     }
 
     // ── Step 7: Remove old tracked files ──────────────────────────
-    run("git", ["rm", "-rf", "."], { exitOnError: false, label: "remove old tracked files" });
+    run("git", ["rm", "-rf", "."], {
+      exitOnError: false,
+      label: "remove old tracked files",
+    });
 
     // ── Step 8: Remove untracked artifacts that leaked from main ──
     // git rm only removes tracked files. Anything gitignored
@@ -144,13 +159,22 @@ async function main() {
       const entryPath = path.join(PROJECT_ROOT, entry);
       const exists = Bun.spawnSync(["test", "-e", entryPath]).exitCode === 0;
       if (exists) {
-        run("rm", ["-rf", entryPath], { label: `remove ${entry} from gh-pages`, exitOnError: false });
+        run("rm", ["-rf", entryPath], {
+          label: `remove ${entry} from gh-pages`,
+          exitOnError: false,
+        });
       }
     }
 
     // ── Step 9: Copy dist/ contents back to working tree ──────────
-    const backupFiles = [...Bun.spawnSync(["ls", tmpBackup]).stdout.toString().trim().split("\n").filter(Boolean)];
-    console.log(`  ℹ️  Restoring from backup: ${backupFiles.join(", ")}`);
+    const backupFiles = [
+      ...Bun.spawnSync(["ls", tmpBackup])
+        .stdout.toString()
+        .trim()
+        .split("\n")
+        .filter(Boolean),
+    ];
+    console.log(`  ℹ️ Restoring from backup: ${backupFiles.join(", ")}`);
     const copyOk = run("cp", ["-r", `${tmpBackup}/.`, PROJECT_ROOT], {
       label: "copy dist contents",
       exitOnError: false,
@@ -168,26 +192,35 @@ async function main() {
       const entryPath = path.join(PROJECT_ROOT, entry);
       const exists = Bun.spawnSync(["test", "-e", entryPath]).exitCode === 0;
       if (!exists) {
-        console.log(`  ⚠️  Skipping ${entry} — not found in backup`);
+        console.log(`  ⚠️ Skipping ${entry} — not found in backup`);
         continue;
       }
-      const addResult = run("git", ["add", entry], { label: `stage ${entry}`, exitOnError: false });
+      const addResult = run("git", ["add", entry], {
+        label: `stage ${entry}`,
+        exitOnError: false,
+      });
       if (addResult.success) {
         stagedCount++;
       } else {
         // git add might fail if the entry resolves to nothing
-        console.log(`  ⚠️  git add ${entry} gave: ${(addResult.stderr || addResult.stdout).slice(0, 120)}`);
+        console.log(
+          `  ⚠️ git add ${entry} gave: ${(addResult.stderr || addResult.stdout).slice(0, 120)}`,
+        );
       }
     }
 
     // ── Step 11: Commit ──────────────────────────────────────────
     if (stagedCount === 0) {
-      console.log("  ⚠️  Nothing to stage — skipping commit");
+      console.log("  ⚠️ Nothing to stage — skipping commit");
     } else {
-      const commitResult = run("git", ["commit", "-m", "deploy: static site build"], {
-        exitOnError: false,
-        label: "commit gh-pages",
-      });
+      const commitResult = run(
+        "git",
+        ["commit", "-m", "deploy: static site build"],
+        {
+          exitOnError: false,
+          label: "commit gh-pages",
+        },
+      );
 
       const both = commitResult.stdout + commitResult.stderr;
       const nothingChanged =
@@ -200,7 +233,7 @@ async function main() {
         console.log(`     ${commitResult.stdout.split("\n")[0]}`);
         didCommit = true;
       } else if (nothingChanged) {
-        console.log("  ⚠️  Nothing changed — gh-pages is up to date");
+        console.log("  ⚠️ Nothing changed — gh-pages is up to date");
       } else {
         console.error(`  ❌ Commit failed:`);
         console.error(commitResult.stderr || commitResult.stdout);
@@ -235,9 +268,8 @@ async function main() {
   console.log(`  🌐 Frontend built in frontend/dist/`);
   if (didCommit) console.log(`  🌿 gh-pages branch updated (static site only)`);
   console.log("");
-  console.log("  Next steps:");
-  console.log(`    git push origin ${currentBranch}`);
-  console.log("    git push origin gh-pages");
+  console.log("  Post changes with:");
+  console.log("    git push origin --all");
   console.log("");
 }
 

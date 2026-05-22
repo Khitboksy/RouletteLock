@@ -7,7 +7,11 @@
   };
 
   outputs =
-    { self, nixpkgs, flake-utils }:
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
@@ -21,28 +25,28 @@
           ];
 
           shellHook = ''
-            echo "🎲 RouletteLock dev environment loaded"
+            echo "RouletteLock dev environment loaded"
 
             # Auto-install root deps
             if [ ! -d node_modules ]; then
-              echo "   📦 Installing root dependencies..."
+              echo "  Installing root dependencies..."
               bun install
             fi
 
             # Auto-install frontend deps
             if [ ! -d frontend/node_modules ]; then
-              echo "   📦 Installing frontend dependencies..."
+              echo "  Installing frontend dependencies..."
               (cd frontend && bun install)
             fi
 
             # Auto-seed database if missing
             if [ ! -f src/db/roulettelock.db ]; then
-              echo "   🗂️  Seeding database..."
+              echo "  Seeding database..."
               bun run seed
             fi
 
             echo "   bun $(bun --version)"
-            echo "   Run 'bun run admin' to start developing"
+            echo "   Run 'bun run dev' to start developing"
           '';
         };
       }

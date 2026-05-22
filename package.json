@@ -8,8 +8,6 @@
     "deploy": "bun run src/deploy.ts",
     "export-data": "bun run src/db/export-json.ts",
     "dev": "bun run src/main.ts",
-    "serve": "bun run dev/server.ts",
-    "web": "bun run dev/server.ts",
     "admin": "bun run src/main.ts",
     "bigBump": "bun run dev/bigBump.ts",
     "smallBump": "bun run dev/smallBump.ts",
