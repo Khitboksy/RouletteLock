@@ -157,15 +157,18 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 │   └── public/data/   # Static JSON exports (items.json, heroes.json)
 ├── src/
 │   ├── db/            # SQLite adapter, seed, schema, export
-│   ├── server.ts      # API server (Bun.serve)
-│   ├── admin.ts       # Dev orchestrator
 │   ├── deploy.ts      # gh-pages deploy pipeline
-│   ├── main.ts        # CLI randomizer
 │   ├── logic.ts       # randomizer engine
-│   ├── dataItems.ts   # items source. reset with `bun run seed`
-│   ├── dataHeroes.ts  # heros source. reset with `bun run seed`
-│   ├── bigBump.ts     # bumps minor version (0.X.0) in both package.json files
-│   └── smallBump.ts   # bumps patch version (0.0.X) in both package.json files
+│   ├── randomizer-core.ts  # pure randomizer algorithm
+│   ├── types.ts       # shared type definitions
+│   ├── data/items.ts   # items source. reset with `bun run seed`
+│   └── data/heroes.ts  # heroes source. reset with `bun run seed`
+├── dev/
+│   ├── admin.ts       # dev orchestrator (spawns API + Vite)
+│   ├── server.ts      # API server (Bun.serve)
+│   ├── main.ts        # CLI randomizer
+│   ├── bigBump.ts     # bumps minor version (0.X.0)
+│   └── smallBump.ts   # bumps patch version (0.0.X)
 └── package.json
 ```
 
@@ -177,7 +180,7 @@ Source data → `bun run seed` → SQLite → `bun run export-data` →
 In dev mode (`bun run admin`), the frontend also talks to the API at `/api/*`
 for admin CRUD and git operations. Admin changes are preserved on deploy if and
 only if the database doesnt get deleted. If you lose the database, you reseed
-whatever is *inside* the TypeScript arrays in `src/dataHeroes.ts` and `src/dataItems.ts`
+whatever is *inside* the TypeScript arrays in `src/data/heroes.ts` and `src/data/items.ts`
 
 Randomization runs entirely in the browser (`frontend/src/randomizer.ts`).
 The server-side engine (`src/logic.ts`) is only used by the CLI.

@@ -2,9 +2,9 @@ import select from "@inquirer/select";
 import number from "@inquirer/number";
 import input from "@inquirer/input";
 import chalk from "chalk";
-import { randomize, getRandomItems } from "./logic.js";
-import { getAllItems } from "./db/adapter.js";
-import { ActiveMode, CategorySplit, TierSplit, CategoryTierSplit } from "./types.js";
+import { randomize, getRandomItems } from "../src/logic.js";
+import { getAllItems } from "../src/db/adapter.js";
+import { ActiveMode, CategorySplit, TierSplit, CategoryTierSplit } from "../src/types.js";
 
 // Color palette (Catppuccin Mocha)
 const colors = {

@@ -10,7 +10,7 @@
  * Run with: bun run src/server.ts
  */
 
-import { randomize } from "./logic";
+import { randomize } from "../src/logic";
 import {
   getAllItems,
   getAllHeroes,
@@ -29,8 +29,8 @@ import {
   getAllItemNames,
   batchUpdateItems,
   exportToJson,
-} from "./db/adapter";
-import type { Item, RandomizerConfig } from "./types";
+} from "../src/db/adapter";
+import type { Item, RandomizerConfig } from "../src/types";
 import path from "path";
 import { fileURLToPath } from "url";
 

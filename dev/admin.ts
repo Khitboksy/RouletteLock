@@ -12,7 +12,7 @@
  * Run with: bun run admin
  */
 
-import { exportToJson } from "./db/adapter";
+import { exportToJson } from "../src/db/adapter";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -30,7 +30,7 @@ console.log("  ✅ Data exported\n");
 
 console.log("  🚀 Starting API server on http://localhost:3000");
 
-const apiProc = Bun.spawn(["bun", "run", "src/server.ts"], {
+const apiProc = Bun.spawn(["bun", "run", "dev/server.ts"], {
   cwd: PROJECT_ROOT,
   stdio: ["inherit", "inherit", "inherit"],
   env: { ...process.env },

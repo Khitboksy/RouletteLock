@@ -1,7 +1,7 @@
 /**
  * RouletteLock SQLite Schema
  *
- * Replaces the hardcoded dataItems.ts and dataHeroes.ts with a queryable database.
+ * Replaces the hardcoded data/items.ts and data/heroes.ts with a queryable database.
  * Designed for forward-compatibility with React (integer PKs, timestamps, image URLs).
  * All types are JSON-serializable (no SQLite-specific types).
  */

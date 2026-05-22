@@ -7,8 +7,8 @@
 
 import { Database } from "bun:sqlite";
 import { CREATE_SCHEMA_SQL } from "./schema";
-import { items as sourceItems } from "../dataItems";
-import { heroes as sourceHeroes } from "../dataHeroes";
+import { items as sourceItems } from "../data/items";
+import { heroes as sourceHeroes } from "../data/heroes";
 import path from "path";
 import { fileURLToPath } from "url";
 

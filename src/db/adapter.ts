@@ -1,8 +1,8 @@
 /**
  * RouletteLock Database Adapter
  *
- * Replaces `import { items } from "./dataItems.js"` and
- * `import { heroes } from "./dataHeroes.js"` with SQLite-backed queries.
+ * Replaces `import { items } from "./data/items.js"` and
+ * `import { heroes } from "./data/heroes.js"` with SQLite-backed queries.
  *
  * Returns data in the EXACT same shape as the hardcoded arrays
  * (same Item/Hero interfaces with name-based upgrade chains).
@@ -11,8 +11,8 @@
 import { Database } from "bun:sqlite";
 import type { Item, Hero } from "../types";
 import { CREATE_SCHEMA_SQL } from "./schema";
-import { items as sourceItems } from "../dataItems";
-import { heroes as sourceHeroes } from "../dataHeroes";
+import { items as sourceItems } from "../data/items";
+import { heroes as sourceHeroes } from "../data/heroes";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -148,7 +148,7 @@ interface UpgradeNameRow {
 /**
  * Reconstruct the name-based upgrade arrays for a single item by querying
  * the junction tables. This mirrors the hardcoded `upgradesTo` / `upgradesFrom`
- * arrays in dataItems.ts.
+ * arrays in data/items.ts.
  */
 function getUpgradeNames(itemId: number): { upgradesTo: string[]; upgradesFrom: string[] } {
   const d = getDb();

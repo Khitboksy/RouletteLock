@@ -1,4 +1,4 @@
-import { Item, Category, Tier, defaultItem } from "./types";
+import { Item, Category, Tier, defaultItem } from "../types";
 
 export const items: Item[] = [
   // =-=-=-=-=-=  -T1-  =-=-=-=-=-= \\
