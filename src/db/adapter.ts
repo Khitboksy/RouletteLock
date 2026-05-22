@@ -10,6 +10,9 @@
 
 import { Database } from "bun:sqlite";
 import type { Item, Hero } from "../types";
+import { CREATE_SCHEMA_SQL } from "./schema";
+import { items as sourceItems } from "../dataItems";
+import { heroes as sourceHeroes } from "../dataHeroes";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -25,6 +28,100 @@ function getDb(): Database {
     db.run("PRAGMA journal_mode = WAL;");
   }
   return db;
+}
+
+/**
+ * Ensure the database exists, has tables, and is seeded.
+ * Safe to call repeatedly — does nothing if already seeded.
+ */
+export function ensureDatabaseReady(): void {
+  const d = getDb();
+
+  // Create tables if they don't exist (IF NOT EXISTS is in the schema)
+  d.run(CREATE_SCHEMA_SQL);
+
+  // Check if already seeded
+  try {
+    const result = d.query("SELECT COUNT(*) as cnt FROM items").get() as { cnt: number };
+    if (result.cnt > 0) return; // already has data
+  } catch {
+    // table doesn't exist yet — the schema creation above handles it
+  }
+
+  // Seed from source data
+  console.log("  ℹ️  Database empty — seeding from source data...");
+
+  // Insert heroes
+  const insertHero = d.prepare(
+    "INSERT OR IGNORE INTO heroes (name, roles) VALUES ($name, $roles)"
+  );
+  for (const hero of sourceHeroes) {
+    insertHero.run({ $name: hero.name, $roles: JSON.stringify(hero.roles || []) });
+  }
+
+  // Insert items (first pass: build name→id map)
+  const nameToId: Map<string, number> = new Map();
+  const insertItem = d.prepare(`
+    INSERT OR IGNORE INTO items (name, category, value, active)
+    VALUES ($name, $category, $value, $active)
+  `);
+  for (const item of sourceItems) {
+    const info = insertItem.run({
+      $name: item.name,
+      $category: item.category,
+      $value: item.value,
+      $active: item.active ? 1 : 0,
+    });
+    if (Number(info.lastInsertRowid) > 0) {
+      nameToId.set(item.name, Number(info.lastInsertRowid));
+    } else {
+      // Item already existed — look up existing id
+      const existing = d.query("SELECT id FROM items WHERE name = $name").get({ $name: item.name }) as { id: number } | undefined;
+      if (existing) nameToId.set(item.name, existing.id);
+    }
+  }
+
+  // Second pass: type tags and upgrade chains
+  const insertType = d.prepare(
+    "INSERT OR IGNORE INTO item_types (item_id, type) VALUES ($item_id, $type)"
+  );
+  const insertUpgrade = d.prepare(
+    "INSERT OR IGNORE INTO item_upgrades (item_id, upgrades_to_item_id) VALUES ($item_id, $upgrades_to_item_id)"
+  );
+
+  for (const item of sourceItems) {
+    const itemId = nameToId.get(item.name);
+    if (!itemId) continue;
+
+    // Type tags
+    if (item.type && Array.isArray(item.type)) {
+      for (const t of item.type) {
+        insertType.run({ $item_id: itemId, $type: t });
+      }
+    }
+
+    // upgradesTo
+    if (item.upgradesTo && Array.isArray(item.upgradesTo)) {
+      for (const targetName of item.upgradesTo) {
+        const targetId = nameToId.get(targetName);
+        if (targetId) {
+          insertUpgrade.run({ $item_id: itemId, $upgrades_to_item_id: targetId });
+        }
+      }
+    }
+
+    // upgradesFrom
+    if (item.upgradesFrom && Array.isArray(item.upgradesFrom)) {
+      for (const sourceName of item.upgradesFrom) {
+        const sourceId = nameToId.get(sourceName);
+        if (sourceId) {
+          insertUpgrade.run({ $item_id: sourceId, $upgrades_to_item_id: itemId });
+        }
+      }
+    }
+  }
+
+  console.log("  ✅ Database seeded");
 }
 
 // ─── Row Types (from SQLite) ────────────────────────────────────────

@@ -8,22 +8,23 @@
  * Run with: bun run deploy
  *
  * Workflow:
- *   1. Export SQLite → JSON (frontend/public/data/)
- *   2. Build frontend via Vite (frontend/dist/)
- *   3. Stash working tree (preserves node_modules across branch switch)
- *   4. Temp-backup dist/ → /tmp/roulettelock-dist-backup-*
- *   5. Checkout gh-pages (create with --orphan if first time)
- *   6. git rm -rf .  (clear old gh-pages contents)
- *   7. Remove untracked artifacts that leaked from main (src, frontend, etc.)
- *   8. Copy dist/ from backup back
- *   9. Stage only: index.html  assets/  data/
- *  10. git commit -m "deploy: static site build"
- *  11. Return to original branch
- *  12. Pop stash (restores node_modules and work-in-progress)
- *  13. Clean up temp backup
+ *   1. Ensure database is seeded (auto-seeds from source data if empty)
+ *   2. Export SQLite → JSON (frontend/public/data/)
+ *   3. Build frontend via Vite (frontend/dist/)
+ *   4. Stash working tree (preserves node_modules across branch switch)
+ *   5. Temp-backup dist/ → /tmp/roulettelock-dist-backup-*
+ *   6. Checkout gh-pages (create with --orphan if first time)
+ *   7. git rm -rf .  (clear old gh-pages contents)
+ *   8. Remove untracked artifacts that leaked from main (src, frontend, etc.)
+ *   9. Copy dist/ from backup back
+ *  10. Stage only: index.html  assets/  data/
+ *  11. git commit -m "deploy: static site build"
+ *  12. Return to original branch
+ *  13. Pop stash (restores node_modules and work-in-progress)
+ *  14. Clean up temp backup
  */
 
-import { exportToJson } from "./db/adapter";
+import { exportToJson, ensureDatabaseReady } from "./db/adapter";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -55,13 +56,18 @@ function run(
 async function main() {
   console.log("\n  🚀 RouletteLock Deploy\n");
 
-  // ── Step 1: Export data ──────────────────────────────────────────
-  console.log("  [1/4] Exporting data from SQLite...");
+  // ── Step 1: Ensure database is seeded ───────────────────────────
+  console.log("  [1/5] Ensuring database is ready...");
+  ensureDatabaseReady();
+  console.log("  ✅ Database ready\n");
+
+  // ── Step 2: Export data ──────────────────────────────────────────
+  console.log("  [2/5] Exporting data from SQLite...");
   exportToJson();
   console.log("  ✅ Data exported to frontend/public/data/\n");
 
-  // ── Step 2: Build frontend ───────────────────────────────────────
-  console.log("  [2/4] Building frontend...");
+  // ── Step 3: Build frontend ───────────────────────────────────────
+  console.log("  [3/5] Building frontend...");
   const frontendDir = path.join(PROJECT_ROOT, "frontend");
   const buildResult = Bun.spawnSync(["bun", "run", "build"], {
     cwd: frontendDir,
@@ -73,10 +79,10 @@ async function main() {
   }
   console.log("  ✅ Frontend built\n");
 
-  // ── Step 3: Note current branch & stash ─────────────────────────
+  // ── Step 4: Note current branch & stash ─────────────────────────
   const branchResult = run("git", ["branch", "--show-current"], { label: "get current branch" });
   const currentBranch = branchResult.stdout;
-  console.log(`  [3/4] Current branch: ${currentBranch}`);
+  console.log(`  [4/5] Current branch: ${currentBranch}`);
 
   const STASH_MSG = "roulettelock-deploy-temp";
   const distDir = path.join(PROJECT_ROOT, "frontend", "dist");
@@ -88,7 +94,7 @@ async function main() {
     exitOnError: false, // ok if nothing to stash
   });
 
-  // ── Step 4: Backup dist/ ─────────────────────────────────────────
+    // ── Step 5: Backup dist/ ─────────────────────────────────────────
   const timestamp = Date.now().toString(36);
   const tmpBackup = `/tmp/roulettelock-dist-backup-${timestamp}`;
   run("mkdir", ["-p", tmpBackup], { label: "create temp backup dir" });
@@ -98,7 +104,7 @@ async function main() {
   let didCommit = false;
 
   try {
-    // ── Step 5: Checkout/update gh-pages ──────────────────────────
+    // ── Step 6: Checkout/update gh-pages ──────────────────────────
     const branchList = run("git", ["branch"], { label: "list branches" });
     const hasGhPages = branchList.stdout.includes("gh-pages");
 
@@ -108,10 +114,10 @@ async function main() {
       run("git", ["checkout", "--orphan", "gh-pages"], { label: "create orphan gh-pages" });
     }
 
-    // ── Step 6: Remove old tracked files ──────────────────────────
+    // ── Step 7: Remove old tracked files ──────────────────────────
     run("git", ["rm", "-rf", "."], { exitOnError: false, label: "remove old tracked files" });
 
-    // ── Step 7: Remove untracked artifacts that leaked from main ──
+    // ── Step 8: Remove untracked artifacts that leaked from main ──
     // git rm only removes tracked files — src/, frontend/, node_modules/,
     // and bun.lock persist across branch switches because they contain
     // or are gitignored content. None belong on gh-pages.
@@ -124,7 +130,7 @@ async function main() {
       }
     }
 
-    // ── Step 8: Copy dist/ contents back to working tree ──────────
+    // ── Step 9: Copy dist/ contents back to working tree ──────────
     const backupFiles = [...Bun.spawnSync(["ls", tmpBackup]).stdout.toString().trim().split("\n").filter(Boolean)];
     console.log(`  ℹ️  Restoring from backup: ${backupFiles.join(", ")}`);
     const copyOk = run("cp", ["-r", `${tmpBackup}/.`, PROJECT_ROOT], {
@@ -137,7 +143,7 @@ async function main() {
       return; // will hit finally block for cleanup
     }
 
-    // ── Step 9: Stage only the static site files ──────────────────
+    // ── Step 10: Stage only the static site files ─────────────────
     const staticFiles = ["index.html", "assets", "data"];
     let stagedCount = 0;
     for (const entry of staticFiles) {
@@ -156,7 +162,7 @@ async function main() {
       }
     }
 
-    // ── Step 10: Commit ──────────────────────────────────────────
+    // ── Step 11: Commit ──────────────────────────────────────────
     if (stagedCount === 0) {
       console.log("  ⚠️  Nothing to stage — skipping commit");
     } else {
@@ -187,19 +193,19 @@ async function main() {
     //  CLEANUP — always runs, even if an error occurred above
     // ══════════════════════════════════════════════════════════════
 
-    // ── Step 11: Return to original branch ──────────────────────
+    // ── Step 12: Return to original branch ──────────────────────
     run("git", ["checkout", currentBranch], {
       label: `return to ${currentBranch}`,
       exitOnError: false,
     });
 
-    // ── Step 12: Pop stash ─────────────────────────────────────
+    // ── Step 13: Pop stash ─────────────────────────────────────
     const stashList = run("git", ["stash", "list"], { exitOnError: false });
     if (stashList.stdout.includes(STASH_MSG)) {
       run("git", ["stash", "pop"], { exitOnError: false, label: "pop stash" });
     }
 
-    // ── Step 13: Clean up temp dir ─────────────────────────────
+    // ── Step 14: Clean up temp dir ─────────────────────────────
     run("rm", ["-rf", tmpBackup], { exitOnError: false });
 
     console.log(`  ✅ Returned to ${currentBranch}\n`);
