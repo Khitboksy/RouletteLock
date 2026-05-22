@@ -230,6 +230,30 @@ a:hover {
   border-color: var(--blue);
 }
 
+.button-group.sub-group {
+  margin-top: 8px;
+  gap: 4px;
+}
+.btn-small-option {
+  background: var(--mantle);
+  color: var(--subtext0);
+  border: 1px solid var(--surface0);
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.btn-small-option:hover {
+  background: var(--surface1);
+  color: var(--text);
+}
+.btn-small-option.selected {
+  background: var(--teal);
+  color: var(--base);
+  border-color: var(--teal);
+}
+
 .btn-small {
   background: var(--surface0);
   color: var(--text);
@@ -370,7 +394,12 @@ a:hover {
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-  opacity: 1;
+  -webkit-appearance: none;
+  margin: 0;
+  display: none;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* ─── Tier Sections ──────────────────────────────────────────────── */

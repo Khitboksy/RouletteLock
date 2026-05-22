@@ -31,6 +31,7 @@ import {
 import type {
   Item,
   Hero,
+  ActiveMode,
   RandomizerConfig,
   RandomizerResult,
 } from "./randomizer";
@@ -71,8 +72,12 @@ const CATEGORY_BORDER: Record<string, string> = {
 
 type Page = "randomizer" | "admin";
 
+type ActiveTab = "normal" | "no_actives" | "only_actives";
+type ActiveCount = "random" | 1 | 2 | 3 | 4;
+
 interface FormState {
-  activeMode: "No Actives" | "Only Actives" | "random" | number;
+  activeTab: ActiveTab;
+  activeCount: ActiveCount;
   heroCount: number;
   categoryCounts: Record<Category, string>; // "" = random, "0"-"10" = explicit
   tierCounts: Record<Category, Record<TierKey, string>>;
@@ -101,7 +106,8 @@ export default function App() {
 
   // Form state
   const [form, setForm] = useState<FormState>({
-    activeMode: "No Actives",
+    activeTab: "normal",
+    activeCount: "random",
     heroCount: 3,
     categoryCounts: { Gun: "", Vitality: "", Spirit: "" },
     tierCounts: {
@@ -134,8 +140,10 @@ export default function App() {
 
   // ── Form handlers ───────────────────────────────────────────────
 
-  const setActiveMode = (mode: FormState["activeMode"]) =>
-    setForm((f) => ({ ...f, activeMode: mode }));
+  const setActiveTab = (tab: ActiveTab) =>
+    setForm((f) => ({ ...f, activeTab: tab }));
+  const setActiveCount = (count: ActiveCount) =>
+    setForm((f) => ({ ...f, activeCount: count }));
 
   const setHeroCount = (n: number) =>
     setForm((f) => ({ ...f, heroCount: clamp(n, 3, 10) }));
@@ -158,56 +166,43 @@ export default function App() {
   // ── Randomize ───────────────────────────────────────────────────
 
   const handleRandomize = useCallback(async () => {
-    setError(null);
-    setResult(null);
-
     try {
-      // Parse category counts
-      const catCounts: Record<string, number | null> = {};
-      let allBlank = true;
+      const totalItemCount = items.length;
+
+      // Compute the active mode value for the randomizer
+      const activeMode: string | number =
+        form.activeTab === "no_actives"
+          ? "No Actives"
+          : form.activeTab === "only_actives"
+            ? "Only Actives"
+            : form.activeCount;
+
+      // Build category split from form
+      const catCounts = form.categoryCounts;
+      const categorySplit: Record<string, number> = {};
+      let totalItems = 0;
+
       for (const cat of CATEGORIES) {
-        const val = form.categoryCounts[cat].trim();
-        if (val === "") {
-          catCounts[cat] = null; // blank = random
-        } else {
-          catCounts[cat] = clamp(parseInt(val, 10) || 0, 0, 10);
-          allBlank = false;
+        const val = catCounts[cat].trim();
+        if (val !== "") {
+          const n = clamp(parseInt(val, 10) || 0, 0, 12);
+          categorySplit[cat] = n;
+          totalItems += n;
         }
       }
 
-      // Build category split (matching CLI logic)
-      let totalItems: number;
-      const categorySplit: {
-        Gun?: number;
-        Vitality?: number;
-        Spirit?: number;
-      } = {};
-
-      if (allBlank) {
-        // Random total 1-12
-        totalItems = Math.floor(Math.random() * 12) + 1;
-        if (form.activeMode !== "No Actives" && totalItems < 4) totalItems = 4;
-
-        let remaining = totalItems;
-        const gun = Math.floor(Math.random() * (remaining + 1));
-        remaining -= gun;
-        const vit = Math.floor(Math.random() * (remaining + 1));
-        const spi = remaining - vit;
-        categorySplit.Gun = gun;
-        categorySplit.Vitality = vit;
-        categorySplit.Spirit = spi;
-      } else {
-        // Some specified
+      if (Object.keys(categorySplit).length === 0) {
+        // Random split
         const rand = () => Math.floor(Math.random() * 4) + 3;
-        const gun = catCounts.Gun ?? rand();
-        const vit = catCounts.Vitality ?? rand();
-        const spi = catCounts.Spirit ?? rand();
+        const gun = catCounts.Gun ? parseInt(catCounts.Gun, 10) || rand() : rand();
+        const vit = catCounts.Vitality ? parseInt(catCounts.Vitality, 10) || rand() : rand();
+        const spi = catCounts.Spirit ? parseInt(catCounts.Spirit, 10) || rand() : rand();
         totalItems = gun + vit + spi;
 
         // Meet min actives
         const minItems =
-          typeof form.activeMode === "number" ? form.activeMode : 4;
-        if (form.activeMode !== "No Actives" && totalItems < minItems) {
+          typeof activeMode === "number" ? activeMode : 4;
+        if (activeMode !== "No Actives" && totalItems < minItems) {
           categorySplit.Gun = gun + Math.ceil((minItems - totalItems) / 2);
           categorySplit.Vitality =
             vit + Math.floor((minItems - totalItems) / 2);
@@ -255,7 +250,7 @@ export default function App() {
         items: {
           categorySplit,
           tierSplit: effectiveTierSplit as any,
-          activeMode: form.activeMode,
+          activeMode: activeMode as ActiveMode,
         },
       };
 
@@ -299,22 +294,22 @@ export default function App() {
       <header className="header">
         <h1 className="title">🎲 RouletteLock</h1>
         <p className="subtitle">Deadlock Item Randomizer</p>
-        <nav className="nav">
-          <button
-            className={`nav-btn ${page === "randomizer" ? "active" : ""}`}
-            onClick={() => setPage("randomizer")}
-          >
-            Randomizer
-          </button>
-          {isServerMode && (
+        {isServerMode && (
+          <nav className="nav">
+            <button
+              className={`nav-btn ${page === "randomizer" ? "active" : ""}`}
+              onClick={() => setPage("randomizer")}
+            >
+              Randomizer
+            </button>
             <button
               className={`nav-btn ${page === "admin" ? "active" : ""}`}
               onClick={() => setPage("admin")}
             >
               Admin
             </button>
-          )}
-        </nav>
+          </nav>
+        )}
       </header>
 
       <main className="main">
@@ -329,7 +324,8 @@ export default function App() {
           <>
             <RandomizerForm
               form={form}
-              setActiveMode={setActiveMode}
+              setActiveTab={setActiveTab}
+              setActiveCount={setActiveCount}
               setHeroCount={setHeroCount}
               setCategoryCount={setCategoryCount}
               setTierCount={setTierCount}
@@ -394,7 +390,8 @@ export default function App() {
 
 function RandomizerForm({
   form,
-  setActiveMode,
+  setActiveTab,
+  setActiveCount,
   setHeroCount,
   setCategoryCount,
   setTierCount,
@@ -403,7 +400,8 @@ function RandomizerForm({
   heroesCount,
 }: {
   form: FormState;
-  setActiveMode: (m: FormState["activeMode"]) => void;
+  setActiveTab: (t: ActiveTab) => void;
+  setActiveCount: (c: ActiveCount) => void;
   setHeroCount: (n: number) => void;
   setCategoryCount: (c: Category, v: string) => void;
   setTierCount: (c: Category, t: TierKey, v: string) => void;
@@ -411,15 +409,18 @@ function RandomizerForm({
   itemsCount: number;
   heroesCount: number;
 }) {
-  const activeOptions: { label: string; value: FormState["activeMode"] }[] = [
-    { label: "No Actives", value: "No Actives" },
-    { label: "Only Actives", value: "Only Actives" },
+  const tabs: { label: string; value: ActiveTab }[] = [
+    { label: "Normal", value: "normal" },
+    { label: "No Actives", value: "no_actives" },
+    { label: "Only Actives", value: "only_actives" },
+  ];
+
+  const subOptions: { label: string; value: ActiveCount }[] = [
     { label: "Random", value: "random" },
-    { label: "None", value: 0 },
-    { label: "One", value: 1 },
-    { label: "Two", value: 2 },
-    { label: "Three", value: 3 },
-    { label: "Four", value: 4 },
+    { label: "1", value: 1 },
+    { label: "2", value: 2 },
+    { label: "3", value: 3 },
+    { label: "4", value: 4 },
   ];
 
   return (
@@ -427,16 +428,29 @@ function RandomizerForm({
       <div className="card">
         <h2>Active Items Mode</h2>
         <div className="button-group">
-          {activeOptions.map((opt) => (
+          {tabs.map((tab) => (
             <button
-              key={String(opt.value)}
-              className={`btn-option ${form.activeMode === opt.value ? "selected" : ""}`}
-              onClick={() => setActiveMode(opt.value)}
+              key={tab.value}
+              className={`btn-option ${form.activeTab === tab.value ? "selected" : ""}`}
+              onClick={() => setActiveTab(tab.value)}
             >
-              {opt.label}
+              {tab.label}
             </button>
           ))}
         </div>
+        {form.activeTab === "normal" && (
+          <div className="button-group sub-group">
+            {subOptions.map((opt) => (
+              <button
+                key={String(opt.value)}
+                className={`btn-option btn-small-option ${form.activeCount === opt.value ? "selected" : ""}`}
+                onClick={() => setActiveCount(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -461,7 +475,7 @@ function RandomizerForm({
         </div>
       </div>
 
-      {form.activeMode !== "Only Actives" && (
+      {form.activeTab !== "only_actives" && (
         <>
           <div className="card">
             <h2>Category Distribution</h2>
