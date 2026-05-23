@@ -35,7 +35,7 @@ export const items: Item[] = [
     category: Category.Gun,
     value: Tier.T1,
     type: ["Damage"],
-    upgradesTo: ["Opening Rounds", "Express Shot", "Armor Piercing Rounds"],
+    upgradesTo: ["Armor Piercing Rounds", "Express Shot", "Opening Rounds", "Sharpshooter"],
   },
 
   {
@@ -99,6 +99,16 @@ export const items: Item[] = [
     type: ["Healing"],
     active: true,
     upgradesTo: ["Healing Nova", "Rescue Beam"],
+  },
+
+  {
+    ...defaultItem,
+    name: "Grit",
+    category: Category.Vitality,
+    value: Tier.T1,
+    type: ["Shields"],
+    active: true,
+    upgradesTo: ["Guardian Ward", "Reactive Barrier", "Spirit Shielding", "Weapon Shielding"],
   },
 
   {
@@ -169,7 +179,7 @@ export const items: Item[] = [
     category: Category.Spirit,
     value: Tier.T1,
     type: ["Abilities", "Imbued"],
-    upgradesTo: ["Greater Expansion"],
+    upgradesTo: ["Ballistic Enchantment", "Greater Expansion"],
   },
 
   {
@@ -392,6 +402,7 @@ export const items: Item[] = [
     type: ["Utility", "Shields"],
     active: true,
     upgradesTo: ["Divine Barrier"],
+    upgradesFrom: ["Grit"],
   },
 
   {
@@ -419,6 +430,7 @@ export const items: Item[] = [
     value: Tier.T2,
     type: ["Shields"],
     upgradesTo: ["Indomitable"],
+    upgradesFrom: ["Grit"],
   },
 
   {
@@ -446,6 +458,7 @@ export const items: Item[] = [
     value: Tier.T2,
     type: ["Lifesteal"],
     upgradesTo: ["Infuser", "Leech"],
+    upgradesFrom: ["Spiritual Overflow"],
   },
 
   {
@@ -453,7 +466,8 @@ export const items: Item[] = [
     name: "Spirit Shielding",
     category: Category.Vitality,
     value: Tier.T2,
-    type: ["Shields"],
+    type: ["Shields", "Resistance"],
+    upgradesFrom: ["Grit"],
   },
 
   {
@@ -470,7 +484,8 @@ export const items: Item[] = [
     name: "Weapon Shielding",
     category: Category.Vitality,
     value: Tier.T2,
-    type: ["Shields"],
+    type: ["Shields", "Resistance"],
+    upgradesFrom: ["Grit"],
   },
 
   {
@@ -599,6 +614,7 @@ export const items: Item[] = [
     category: Category.Gun,
     value: Tier.T3,
     type: ["Abilities", "Imbued"],
+    upgradesFrom: ["Mystic Expansion"],
   },
 
   {
@@ -713,7 +729,7 @@ export const items: Item[] = [
     category: Category.Gun,
     value: Tier.T3,
     type: ["Damage"],
-    upgradesFrom: ["Long Range"],
+    upgradesFrom: ["Long Range", "High Velocity Rounds"],
   },
 
   {
@@ -811,7 +827,7 @@ export const items: Item[] = [
     category: Category.Vitality,
     value: Tier.T3,
     type: ["Healing", "Damage"],
-    upgradesTo: ["Melee Lifesteal"],
+    upgradesFrom: ["Melee Lifesteal"],
   },
 
   {
@@ -892,6 +908,7 @@ export const items: Item[] = [
     value: Tier.T3,
     type: ["Disarm", "Utility", "Debuff"],
     active: true,
+    upgradesFrom: ["Rusted Barrel"],
   },
 
   {
@@ -1085,6 +1102,7 @@ export const items: Item[] = [
     category: Category.Gun,
     value: Tier.T4,
     type: ["Damage", "Healing"],
+    upgradesTo: ["Spirit Lifesteal"],
   },
 
   {
@@ -1244,7 +1262,7 @@ export const items: Item[] = [
     name: "Arctic Blast",
     category: Category.Spirit,
     value: Tier.T4,
-    type: ["Damage", "Damage AMP", "Debuff"],
+    type: ["Damage", "Debuff"],
     active: true,
     upgradesFrom: ["Cold Front"],
   },
@@ -1388,5 +1406,6 @@ export const items: Item[] = [
     value: Tier.T4,
     type: ["Utility", "Soft CC", "Debuff"],
     active: true,
+    upgradesFrom: ["Slowing Hex"],
   },
 ] as const;
