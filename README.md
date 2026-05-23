@@ -151,23 +151,25 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 ## Project Structure
 
 ```
-├── frontend/          # React SPA (Vite + TypeScript)
-│   ├── src/           # App, randomizer, styles, API client
-│   └── public/data/   # Static JSON exports (items.json, heroes.json)
+├── frontend/               # React SPA (Vite + TypeScript)
+│   ├── src/                # App, randomizer, styles, API client
+│   └── public/data/        # Static JSON exports (items.json, heroes.json)
 ├── src/
-│   ├── db/            # SQLite adapter, seed, schema, export
-│   ├── deploy.ts      # gh-pages deploy pipeline
-│   ├── main.ts        # main entry point (dev environment orchestrator)
-│   ├── logic.ts       # randomizer engine
+│   ├── db/                 # SQLite adapter, seed, schema, export
+│   ├── data/               # seed sources for `bun run seed`.
+│   ├── deploy.ts           # gh-pages deploy pipeline
+│   ├── main.ts             # main entry point (dev environment orchestrator)
+│   ├── logic.ts            # randomizer engine
 │   ├── randomizer-core.ts  # pure randomizer algorithm
-│   ├── types.ts       # shared type definitions
-│   ├── data/items.ts   # items source. reset with `bun run seed`
-│   └── data/heroes.ts  # heroes source. reset with `bun run seed`
+│   └── types.ts            # shared type definitions
 ├── dev/
-│   ├── server.ts      # API server (Bun.serve)
-│   ├── bigBump.ts     # bumps minor version (0.X.0)
-│   └── smallBump.ts   # bumps patch version (0.0.X)
-└── package.json
+│   ├── test/               # Test scripts
+│   │   └── full_suite.mjs 
+│   ├── server.ts           # API server (Bun.serve)
+│   ├── bigBump.ts          # bumps minor version (0.X.0)
+│   └── smallBump.ts        # bumps patch version (0.0.X)
+├── package.json
+└── flake.nix               # Dev flake for Nix-Flakes enabled machines
 ```
 
 ## Data Flow
@@ -175,10 +177,14 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 Source data → `bun run seed` → SQLite → `bun run export-data` →
 `frontend/public/data/*.json` → React frontend loads on startup.
 
+`bun run deploy` does this whole process for you.
+`bun run dev` lets you test the randomizer, and modify the SQLite.
+`bun run serve` hosts JUST the api and the frontend, no admin pannel
+
 In dev mode (`bun run dev`), the frontend also talks to the API at `/api/*`
 for admin CRUD and git operations. Admin changes are preserved on deploy if and
 only if the database doesnt get deleted. If you lose the database, you reseed
 whatever is *inside* the TypeScript arrays in `src/data/heroes.ts` and `src/data/items.ts`
 
 Randomization runs entirely in the browser (`frontend/src/randomizer.ts`).
-The server-side engine (`src/logic.ts`) is used by the API server for on-demand randomization.
+The server-side engine (`src/logic.ts`) is used by the API server for offline randomization.
