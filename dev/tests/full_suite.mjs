@@ -11,14 +11,14 @@
  * Run: bun run full_suite.mjs
  */
 
-import { randomize } from "./frontend/src/randomizer.ts";
+import { randomize } from "../../frontend/src/randomizer.ts";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const allItems = JSON.parse(readFileSync(join(__dirname, "frontend", "public", "data", "items.json"), "utf-8"));
-const allHeroes = JSON.parse(readFileSync(join(__dirname, "frontend", "public", "data", "heroes.json"), "utf-8"));
+const allItems = JSON.parse(readFileSync(join(__dirname, "../../frontend/public/data/items.json"), "utf-8"));
+const allHeroes = JSON.parse(readFileSync(join(__dirname, "../../frontend/public/data/heroes.json"), "utf-8"));
 
 const CATS = ["Gun", "Vitality", "Spirit"];
 const TIERS = ["T1", "T2", "T3", "T4"];
