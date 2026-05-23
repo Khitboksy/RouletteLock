@@ -139,14 +139,13 @@ Opens <http://localhost:5173> with HMR, API server, and the **Admin** tab.
 | Command                  | What it does                                                                                    |
 | ------------------------ | ----------------------------------------------------------------------------------------------- |
 | `bun run dev`            | Full dev env. Exports data, starts API (port 3000) + Vite HMR (port 5173). Admin tab available. |
-| `bun run admin`          | Alias for `bun run dev`.                                                                        |
-| `bun run frontend:dev`   | Vite HMR only (no backend, no admin tab).                                                       |
-| `bun run serve`          | API server only, serves production frontend build.                                              |
+| `bun run deploy`         | Full pipeline: seed if blank db → export → build → commit to gh-pages (does NOT push).          |
+| `bun run serve`          | API server only, serves `bun run deploy` locally build.                                              |
 | `bun run seed`           | Populates SQLite database from source data.                                                     |
 | `bun run export-data`    | Exports SQLite → JSON for the static frontend.                                                  |
 | `bun run frontend:build` | Builds frontend for production (`tsc -b && vite build`).                                        |
-| `bun run deploy`         | Full pipeline: seed if blank db → export → build → commit to gh-pages (does NOT push).          |
-| `bun run bigBump`        | Bumps minor version (`0.X.0`) in root + frontend `package.json`. Feature releases.              |
+| `bun run frontend:dev`   | Vite HMR only (no backend, no admin tab).                                                       |
+| `bun run bigBump`        | Bumps minor version (`0.X.0`) in root + frontend `package.json`. Feature releases/Deadlock patches.              |
 | `bun run smallBump`      | Bumps patch version (`0.0.X`) in root + frontend `package.json`. Bug fixes and tweaks.          |
 
 ## Project Structure
