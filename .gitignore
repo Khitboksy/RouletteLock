@@ -20,10 +20,7 @@ yarn-error.log*
 Thumbs.db
 # Testing
 coverage/
-bun.lock
-refs.md
-runs.md
-AGENT.md
+agents/
 
 # Direnv Output
 .direnv
