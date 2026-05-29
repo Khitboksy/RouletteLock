@@ -67,12 +67,6 @@ sudo pacman -S git
 -- NixOS
 
 ```nix
-nix-env -iA nixpkgs.git
-```
-
- Or add to your system configuration:
-
-```nix
 environment.systemPackages = with pkgs; [
   git
 ];
@@ -101,12 +95,6 @@ curl -fsSL https://bun.sh/install | bash
 ```
 
 NixOS
-
-```nix
-nix-env -iA nixpkgs.bun
-```
-
-Or add to your system configuration:
 
 ```nix
 environment.systemPackages = with pkgs; [
